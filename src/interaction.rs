@@ -28,6 +28,7 @@ pub fn player_interaction(
     table_query: Query<(Entity, &Station, &GridPos), (With<TableMarker>, Without<Player>)>,
     item_on_ground_query: Query<(Entity, &Item, &GridPos)>,
     solid_query: Query<&GridPos, (With<Solid>, Without<Player>)>,
+    conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
     mut commands: Commands,
 ) {
     if !keys.just_pressed(KeyCode::KeyE) && !keys.just_pressed(KeyCode::Space) {
@@ -147,12 +148,15 @@ pub fn player_interaction(
     }
 
     if let Some(carried_entity) = carrying.entity {
+        let on_conveyor = conveyor_query.iter().any(|gp| *gp == front_pos);
         let blocked = solid_query.iter().any(|gp| *gp == front_pos)
             || item_on_ground_query.iter().any(|(_, _, gp)| *gp == front_pos);
 
         if !blocked {
             commands.entity(carried_entity).insert(front_pos);
-            commands.entity(carried_entity).insert(FloorTimer(10.0));
+            if !on_conveyor {
+                commands.entity(carried_entity).insert(FloorTimer(10.0));
+            }
             carrying.entity = None;
             carrying.kind = None;
         }

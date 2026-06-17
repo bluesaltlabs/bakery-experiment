@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::components::{Direction, Facing, GridPos, Player, Solid, Station};
+use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Player, Solid, Station};
 use crate::level::grid_to_world;
 use crate::resources::MovementCooldown;
 
@@ -10,6 +10,7 @@ pub fn player_movement(
     mut player_query: Query<(&mut GridPos, &mut Transform, &mut Facing), With<Player>>,
     solid_query: Query<&GridPos, (With<Solid>, Without<Player>)>,
     station_query: Query<&GridPos, (With<Station>, Without<Player>)>,
+    conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
 ) {
     cooldown.0.tick(time.delta());
     if !cooldown.0.finished() {
@@ -40,7 +41,8 @@ pub fn player_movement(
     };
 
     let blocked = solid_query.iter().any(|gp| *gp == new_pos)
-        || station_query.iter().any(|gp| *gp == new_pos);
+        || station_query.iter().any(|gp| *gp == new_pos)
+        || conveyor_query.iter().any(|gp| *gp == new_pos);
 
     if !blocked {
         pos.x = new_pos.x;

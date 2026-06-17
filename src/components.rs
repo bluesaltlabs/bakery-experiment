@@ -178,3 +178,14 @@ pub struct TableMarker;
 
 #[derive(Component)]
 pub struct FloorTimer(pub f32);
+
+#[derive(Component)]
+pub struct ConveyorBelt {
+    pub direction: Direction,
+}
+
+#[derive(Component)]
+pub struct ConveyorArrow {
+    pub direction: Direction,
+    pub base: Vec3,
+}

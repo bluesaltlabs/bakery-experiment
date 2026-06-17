@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::components::*;
-use crate::level::grid_to_world;
+use crate::level::{grid_to_world, TILE_SIZE};
+use crate::resources::ConveyorTimerResource;
 
 pub fn process_stations(
     time: Res<Time>,
@@ -21,6 +22,51 @@ pub fn process_stations(
                 station.busy = false;
                 station.timer = 0.0;
                 station.has_output = true;
+            }
+        }
+    }
+}
+
+pub fn process_conveyors(
+    time: Res<Time>,
+    mut conveyor_timer: ResMut<ConveyorTimerResource>,
+    conveyor_query: Query<(&ConveyorBelt, &GridPos), Without<Item>>,
+    solid_query: Query<&GridPos, (With<Solid>, Without<Item>, Without<Player>)>,
+    station_query: Query<&GridPos, (With<Station>, Without<Item>, Without<Player>)>,
+    mut item_params: ParamSet<(
+        Query<&GridPos, (With<Item>, Without<Player>)>,
+        Query<(Entity, &mut GridPos), (With<Item>, Without<Player>)>,
+    )>,
+    mut commands: Commands,
+) {
+    conveyor_timer.0.tick(time.delta());
+    if !conveyor_timer.0.finished() {
+        return;
+    }
+
+    let belts: Vec<(GridPos, crate::components::Direction)> = conveyor_query
+        .iter()
+        .map(|(belt, gp)| (*gp, belt.direction))
+        .collect();
+
+    let occupied: Vec<GridPos> = item_params.p0().iter().copied().collect();
+
+    for (entity, mut item_pos) in item_params.p1().iter_mut() {
+        if let Some((_, dir)) = belts.iter().find(|(bp, _)| *bp == *item_pos) {
+            let delta = dir.delta();
+            let next_pos = GridPos {
+                x: item_pos.x + delta.0,
+                y: item_pos.y + delta.1,
+            };
+
+            let blocked = solid_query.iter().any(|gp| *gp == next_pos)
+                || station_query.iter().any(|gp| *gp == next_pos)
+                || occupied.iter().any(|gp| *gp == next_pos);
+
+            if !blocked {
+                item_pos.x = next_pos.x;
+                item_pos.y = next_pos.y;
+                commands.entity(entity).remove::<FloorTimer>();
             }
         }
     }
@@ -76,5 +122,39 @@ pub fn update_station_visuals(
         } else {
             station.kind.color_idle()
         };
+    }
+}
+
+pub fn animate_conveyors(
+    time: Res<Time>,
+    mut arrow_query: Query<(&mut Transform, &ConveyorArrow)>,
+) {
+    let half = TILE_SIZE * 0.4;
+    let bar_half = TILE_SIZE * 0.08;
+    let range = half - bar_half;
+    let speed = 1.2;
+    let t = (time.elapsed_seconds() * speed) % 1.0;
+    let progress = 1.0 - t;
+
+    for (mut transform, arrow) in arrow_query.iter_mut() {
+        let delta = 2.0 * range * progress;
+        match arrow.direction {
+            crate::components::Direction::Down => {
+                transform.translation.x = arrow.base.x;
+                transform.translation.y = arrow.base.y + delta;
+            }
+            crate::components::Direction::Up => {
+                transform.translation.x = arrow.base.x;
+                transform.translation.y = arrow.base.y - delta;
+            }
+            crate::components::Direction::Left => {
+                transform.translation.x = arrow.base.x + delta;
+                transform.translation.y = arrow.base.y;
+            }
+            crate::components::Direction::Right => {
+                transform.translation.x = arrow.base.x - delta;
+                transform.translation.y = arrow.base.y;
+            }
+        }
     }
 }

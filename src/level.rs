@@ -14,14 +14,15 @@ const OVEN: u8 = 4;
 const PACKER: u8 = 5;
 const PALLETIZER: u8 = 6;
 const TABLE: u8 = 7;
+const CONVEYOR: u8 = 8;
 
 // Layout (row 0 = top, y=9):
 //   WWWWWWWWWWWW
 //   W..S.......W
-//   W..........W
-//   W......T...W   Table at (6,6)
-//   W....W..P..W   wall at (5,5), Packer at (8,5)
-//   W....W.....W   wall at (5,4)
+//   W..C.......W   Conveyor v
+//   W..C..T...W   Conveyor v, Table at (6,6)
+//   W..C...P..W   Conveyor v, Packer at (8,5)
+//   W..C.......W   Conveyor v
 //   W..F.......W
 //   W...O......W
 //   W....PL....W
@@ -29,10 +30,10 @@ const TABLE: u8 = 7;
 const LEVEL_DATA: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
     [1,1,1,1,1,1,1,1,1,1,1,1], // y=9 (top)
     [1,0,0,2,0,0,0,0,0,0,0,1], // y=8  Source at (3,8)
-    [1,0,0,0,0,0,0,0,0,0,0,1], // y=7
-    [1,0,0,0,0,0,7,0,0,0,0,1], // y=6  Table at (6,6)
-    [1,0,0,0,0,1,0,0,5,0,0,1], // y=5  wall at (5,5), Packer at (8,5)
-    [1,0,0,0,0,1,0,0,0,0,0,1], // y=4  wall at (5,4)
+    [1,0,0,8,0,0,0,0,0,0,0,1], // y=7  Conveyor
+    [1,0,0,8,0,0,7,0,0,0,0,1], // y=6  Conveyor, Table at (6,6)
+    [1,0,0,8,0,0,0,0,5,0,0,1], // y=5  Conveyor, Packer at (8,5)
+    [1,0,0,8,0,0,0,0,0,0,0,1], // y=4  Conveyor
     [1,0,0,3,0,0,0,0,0,0,0,1], // y=3  Former at (3,3)
     [1,0,0,0,4,0,0,0,0,0,0,1], // y=2  Oven at (4,2)
     [1,0,0,0,0,0,6,0,0,0,0,1], // y=1  Palletizer at (6,1)
@@ -88,6 +89,9 @@ pub fn setup_level(commands: &mut Commands) {
                 }
                 TABLE => {
                     spawn_station(commands, pos, StationKind::Table);
+                }
+                CONVEYOR => {
+                    spawn_conveyor(commands, pos, crate::components::Direction::Down);
                 }
                 _ => {
                     commands.spawn((
@@ -186,6 +190,52 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
         },
         StationLabel { station_entity },
         GameEntity,
+    ));
+}
+
+fn spawn_conveyor(commands: &mut Commands, pos: GridPos, direction: crate::components::Direction) {
+    use crate::components::Direction;
+    let world_pos = grid_to_world(pos);
+    let half = TILE_SIZE * 0.4;
+    let bar_half = TILE_SIZE * 0.08;
+    let (offset_x, offset_y, width, height) = match direction {
+        Direction::Up => (0.0, half - bar_half, TILE_SIZE * 0.6, TILE_SIZE * 0.16),
+        Direction::Down => (0.0, -(half - bar_half), TILE_SIZE * 0.6, TILE_SIZE * 0.16),
+        Direction::Left => (-(half - bar_half), 0.0, TILE_SIZE * 0.16, TILE_SIZE * 0.6),
+        Direction::Right => (half - bar_half, 0.0, TILE_SIZE * 0.16, TILE_SIZE * 0.6),
+    };
+
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(0.25, 0.35, 0.45),
+                custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),
+                ..default()
+            },
+            transform: Transform::from_translation(world_pos),
+            ..default()
+        },
+        pos,
+        ConveyorBelt { direction },
+        GameEntity,
+    ));
+
+    let arrow_pos = Vec3::new(world_pos.x + offset_x, world_pos.y + offset_y, 0.05);
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(0.2, 0.7, 0.9),
+                custom_size: Some(Vec2::new(width, height)),
+                ..default()
+            },
+            transform: Transform::from_translation(arrow_pos),
+            ..default()
+        },
+        GameEntity,
+        ConveyorArrow {
+            direction,
+            base: arrow_pos,
+        },
     ));
 }
 

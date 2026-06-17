@@ -26,3 +26,6 @@ pub struct MovementCooldown(pub Timer);
 
 #[derive(Resource)]
 pub struct GridVisible(pub bool);
+
+#[derive(Resource)]
+pub struct ConveyorTimerResource(pub Timer);

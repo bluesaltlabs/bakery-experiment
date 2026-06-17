@@ -15,6 +15,7 @@ use bevy::prelude::*;
 use bevy::audio::AudioPlugin;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+use resources::ConveyorTimerResource;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 fn main() {
@@ -52,11 +53,17 @@ fn main() {
             t
         }))
         .insert_resource(resources::GridVisible(true))
+        .insert_resource(ConveyorTimerResource(Timer::from_seconds(
+            0.5,
+            TimerMode::Repeating,
+        )))
         .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, setup_ui_sys))
         .add_systems(
             Update,
             (
                 movement::player_movement,
+                stations::process_conveyors,
+                stations::animate_conveyors,
                 interaction::player_interaction,
                 interaction::update_carried_items,
                 stations::process_stations,
