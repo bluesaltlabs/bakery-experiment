@@ -4,15 +4,15 @@ use crate::level::TILE_SIZE;
 use crate::resources::ShiftState;
 
 pub fn update_carried_items(
-    player_query: Query<(&Carrying, &Transform), (With<Player>, Without<Item>)>,
+    carrier_query: Query<(&Carrying, &Transform), Without<Item>>,
     mut item_query: Query<&mut Transform, With<Item>>,
 ) {
-    for (carrying, player_transform) in player_query.iter() {
+    for (carrying, carrier_transform) in carrier_query.iter() {
         if let Some(entity) = carrying.entity {
             if let Ok(mut item_transform) = item_query.get_mut(entity) {
                 item_transform.translation = Vec3::new(
-                    player_transform.translation.x,
-                    player_transform.translation.y,
+                    carrier_transform.translation.x,
+                    carrier_transform.translation.y,
                     0.1,
                 );
             }

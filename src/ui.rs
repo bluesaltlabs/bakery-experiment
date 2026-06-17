@@ -42,6 +42,7 @@ pub fn handle_restart(
     grid_visible.0 = true;
     setup_level(&mut commands);
     crate::player::spawn_player(&mut commands);
+    crate::npc::spawn_npc(&mut commands);
     setup_ui(&mut commands);
 }
 

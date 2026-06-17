@@ -169,6 +169,9 @@ pub struct GridLine;
 pub struct DirectionIndicator;
 
 #[derive(Component)]
+pub struct NpcDirectionIndicator;
+
+#[derive(Component)]
 pub struct StationLabel {
     pub station_entity: Entity,
 }
@@ -188,4 +191,23 @@ pub struct ConveyorBelt {
 pub struct ConveyorArrow {
     pub direction: Direction,
     pub base: Vec3,
+}
+
+#[derive(Component)]
+pub struct Npc {
+    pub state: NpcState,
+    pub move_timer: f32,
+    pub action_timer: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NpcState {
+    WaitingAtConveyor,
+    PickingUp,
+    MovingToFormer,
+    InsertingToFormer,
+    WaitingForFormer,
+    CollectingFromFormer,
+    InsertingToOven,
+    ReturningToConveyor,
 }

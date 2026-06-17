@@ -4,6 +4,7 @@ mod components;
 mod interaction;
 mod level;
 mod movement;
+mod npc;
 mod player;
 mod resources;
 mod stations;
@@ -57,7 +58,7 @@ fn main() {
             0.5,
             TimerMode::Repeating,
         )))
-        .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, setup_ui_sys))
+        .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, spawn_npc_sys, setup_ui_sys))
         .add_systems(
             Update,
             (
@@ -65,6 +66,8 @@ fn main() {
                 stations::process_conveyors,
                 stations::animate_conveyors,
                 interaction::player_interaction,
+                npc::npc_ai,
+                npc::update_npc_direction_indicator,
                 interaction::update_carried_items,
                 stations::process_stations,
                 stations::sync_ground_items,
@@ -99,6 +102,10 @@ fn setup_level_sys(mut commands: Commands) {
 
 fn spawn_player_sys(mut commands: Commands) {
     player::spawn_player(&mut commands);
+}
+
+fn spawn_npc_sys(mut commands: Commands) {
+    npc::spawn_npc(&mut commands);
 }
 
 fn setup_ui_sys(mut commands: Commands) {
