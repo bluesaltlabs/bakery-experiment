@@ -33,3 +33,17 @@ pub fn sync_ground_items(
         transform.translation = grid_to_world(*pos);
     }
 }
+
+pub fn update_station_visuals(
+    mut query: Query<(&Station, &mut Sprite)>,
+) {
+    for (station, mut sprite) in query.iter_mut() {
+        sprite.color = if station.has_output {
+            station.kind.color_ready()
+        } else if station.busy {
+            station.kind.color_busy()
+        } else {
+            station.kind.color_idle()
+        };
+    }
+}

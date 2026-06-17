@@ -35,7 +35,19 @@ impl Direction {
 }
 
 #[derive(Component)]
-pub struct Carrying(pub Option<Entity>);
+pub struct Carrying {
+    pub entity: Option<Entity>,
+    pub kind: Option<ItemKind>,
+}
+
+impl Carrying {
+    pub fn empty() -> Self {
+        Carrying {
+            entity: None,
+            kind: None,
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ItemKind {
@@ -80,7 +92,7 @@ pub enum StationKind {
 }
 
 impl StationKind {
-    pub fn color(&self) -> Color {
+    pub fn color_idle(&self) -> Color {
         match self {
             StationKind::Source => Color::srgb(0.2, 0.8, 0.2),
             StationKind::Former => Color::srgb(0.8, 0.5, 0.2),
@@ -90,14 +102,34 @@ impl StationKind {
         }
     }
 
-    pub fn label(&self) -> &str {
+    pub fn color_busy(&self) -> Color {
+        match self {
+            StationKind::Source => Color::srgb(0.12, 0.48, 0.12),
+            StationKind::Former => Color::srgb(0.48, 0.30, 0.12),
+            StationKind::Oven => Color::srgb(0.54, 0.18, 0.06),
+            StationKind::Packer => Color::srgb(0.18, 0.18, 0.48),
+            StationKind::Palletizer => Color::srgb(0.48, 0.12, 0.48),
+        }
+    }
+
+    pub fn color_ready(&self) -> Color {
+        match self {
+            StationKind::Source => Color::srgb(0.4, 1.0, 0.4),
+            StationKind::Former => Color::srgb(1.0, 0.7, 0.4),
+            StationKind::Oven => Color::srgb(1.0, 0.5, 0.3),
+            StationKind::Packer => Color::srgb(0.5, 0.5, 1.0),
+            StationKind::Palletizer => Color::srgb(1.0, 0.4, 1.0),
+        }
+    }
+
+    pub fn label(&self) -> String {
         match self {
             StationKind::Source => "Source",
             StationKind::Former => "Former",
             StationKind::Oven => "Oven",
             StationKind::Packer => "Packer",
             StationKind::Palletizer => "Pallet",
-        }
+        }.to_string()
     }
 }
 
@@ -123,3 +155,6 @@ pub struct GameOverText;
 
 #[derive(Component)]
 pub struct HudText;
+
+#[derive(Component)]
+pub struct GridLine;

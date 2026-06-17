@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use crate::components::*;
-use crate::resources::ShiftState;
+use crate::resources::{GridVisible, ShiftState};
 use crate::level::*;
 
 pub fn update_game_state(
@@ -26,6 +26,7 @@ pub fn update_game_state(
 pub fn handle_restart(
     keys: Res<ButtonInput<KeyCode>>,
     mut shift: ResMut<ShiftState>,
+    mut grid_visible: ResMut<GridVisible>,
     game_entities: Query<Entity, With<GameEntity>>,
     mut commands: Commands,
 ) {
@@ -38,6 +39,7 @@ pub fn handle_restart(
     }
 
     *shift = ShiftState::new();
+    grid_visible.0 = true;
     setup_level(&mut commands);
     crate::player::spawn_player(&mut commands);
     setup_ui(&mut commands);
@@ -47,7 +49,7 @@ pub fn setup_ui(commands: &mut Commands) {
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
-                "Time: 120",
+                "Time: 300",
                 TextStyle {
                     font_size: 20.0,
                     color: Color::WHITE,
@@ -55,7 +57,7 @@ pub fn setup_ui(commands: &mut Commands) {
                 },
             ),
             TextSection::new(
-                "\nCases: 0/3",
+                "\nCases: 0/20",
                 TextStyle {
                     font_size: 20.0,
                     color: Color::WHITE,
@@ -104,7 +106,6 @@ pub fn setup_ui(commands: &mut Commands) {
 pub fn update_ui(
     shift: Res<ShiftState>,
     player_query: Query<&Carrying, With<Player>>,
-    item_query: Query<&Item>,
     mut text_query: Query<&mut Text, With<HudText>>,
 ) {
     if shift.game_over {
@@ -112,14 +113,11 @@ pub fn update_ui(
     }
 
     let carrying_name = match player_query.iter().next() {
-        Some(carrying) => match carrying.0 {
-            Some(entity) => item_query
-                .get(entity)
-                .map(|i| i.kind.label())
-                .unwrap_or("Unknown"),
-            None => "None",
+        Some(carrying) => match carrying.kind {
+            Some(kind) => kind.label().to_string(),
+            None => "None".to_string(),
         },
-        None => "None",
+        None => "None".to_string(),
     };
 
     if let Some(mut text) = text_query.iter_mut().next() {

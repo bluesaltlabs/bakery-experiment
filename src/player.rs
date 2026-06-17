@@ -19,7 +19,7 @@ pub fn spawn_player(commands: &mut Commands) {
         },
         Player,
         Facing(crate::components::Direction::Up),
-        Carrying(None),
+        Carrying::empty(),
         pos,
         GameEntity,
     ));

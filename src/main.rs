@@ -25,6 +25,7 @@ fn main() {
             t.tick(Duration::from_secs_f32(1.0));
             t
         }))
+        .insert_resource(resources::GridVisible(true))
         .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, setup_ui_sys))
         .add_systems(
             Update,
@@ -34,6 +35,8 @@ fn main() {
                 interaction::update_carried_items,
                 stations::process_stations,
                 stations::sync_ground_items,
+                stations::update_station_visuals,
+                level::toggle_grid,
                 ui::update_game_state,
                 ui::update_ui,
                 ui::show_game_over,

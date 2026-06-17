@@ -12,9 +12,9 @@ pub struct ShiftState {
 impl ShiftState {
     pub fn new() -> Self {
         ShiftState {
-            time_remaining: 120.0,
+            time_remaining: 300.0,
             cases_completed: 0,
-            target_cases: 3,
+            target_cases: 20,
             game_over: false,
             victory: false,
         }
@@ -23,3 +23,6 @@ impl ShiftState {
 
 #[derive(Resource)]
 pub struct MovementCooldown(pub Timer);
+
+#[derive(Resource)]
+pub struct GridVisible(pub bool);
