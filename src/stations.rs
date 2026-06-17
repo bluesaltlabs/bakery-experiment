@@ -74,9 +74,14 @@ pub fn process_conveyors(
 
 pub fn sync_ground_items(
     mut item_query: Query<(&GridPos, &mut Transform), (With<Item>, Changed<GridPos>)>,
+    conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Item>)>,
 ) {
     for (pos, mut transform) in item_query.iter_mut() {
-        transform.translation = grid_to_world(*pos);
+        let mut p = grid_to_world(*pos);
+        if conveyor_query.iter().any(|gp| *gp == *pos) {
+            p.z = 0.06;
+        }
+        transform.translation = p;
     }
 }
 
@@ -132,9 +137,11 @@ pub fn animate_conveyors(
     let half = TILE_SIZE * 0.4;
     let bar_half = TILE_SIZE * 0.08;
     let range = half - bar_half;
-    let speed = 1.2;
+    let steps = 3.0;
+    let speed = 1.5;
     let t = (time.elapsed_seconds() * speed) % 1.0;
-    let progress = 1.0 - t;
+    let step = (t * steps).floor() / steps;
+    let progress = 1.0 - step;
 
     for (mut transform, arrow) in arrow_query.iter_mut() {
         let delta = 2.0 * range * progress;
