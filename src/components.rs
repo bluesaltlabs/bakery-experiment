@@ -219,4 +219,9 @@ pub enum NpcState {
     MovingToPacker,
     InsertingToPacker,
     ReturningToOvenWait,
+    WaitingAtPacker,
+    CollectingFromPacker,
+    MovingToPalletizer,
+    InsertingToPalletizer,
+    ReturningToPackerWait,
 }

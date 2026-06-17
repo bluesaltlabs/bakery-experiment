@@ -44,6 +44,7 @@ pub fn handle_restart(
     crate::player::spawn_player(&mut commands);
     crate::npc::spawn_npc1(&mut commands);
     crate::npc::spawn_npc2(&mut commands);
+    crate::npc::spawn_npc3(&mut commands);
     setup_ui(&mut commands);
 }
 

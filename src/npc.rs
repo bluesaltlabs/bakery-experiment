@@ -113,9 +113,61 @@ pub fn spawn_npc2(commands: &mut Commands) {
     ));
 }
 
+pub fn spawn_npc3(commands: &mut Commands) {
+    let pos = GridPos { x: 7, y: 5 };
+    let world_pos = grid_to_world(pos);
+
+    let npc_entity = commands
+        .spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: Color::srgb(0.3, 0.5, 0.9),
+                    custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
+                    ..default()
+                },
+                transform: Transform::from_translation(Vec3::new(
+                    world_pos.x,
+                    world_pos.y,
+                    NPC_Z,
+                )),
+                ..default()
+            },
+            pos,
+            Facing(Direction::Right),
+            Carrying::empty(),
+            Npc {
+                state: NpcState::WaitingAtPacker,
+                move_timer: 0.0,
+                action_timer: 0.0,
+                move_cooldown: 0.5,
+                action_cooldown: 0.25,
+            },
+            GameEntity,
+        ))
+        .id();
+
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(0.5, 0.7, 1.0),
+                custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.15)),
+                ..default()
+            },
+            transform: Transform::from_translation(Vec3::new(
+                world_pos.x,
+                world_pos.y + TILE_SIZE * 0.35 - TILE_SIZE * 0.075,
+                0.05,
+            )),
+            ..default()
+        },
+        NpcDirectionIndicator { npc_entity },
+        GameEntity,
+    ));
+}
+
 pub fn npc_ai(
     time: Res<Time>,
-    shift: Res<ShiftState>,
+    mut shift: ResMut<ShiftState>,
     mut npc_query: Query<(Entity, &mut GridPos, &mut Facing, &mut Carrying, &mut Npc, &mut Transform)>,
     mut station_query: Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
     item_on_ground_query: Query<(Entity, &Item, &GridPos), (Without<Npc>, Without<Player>)>,
@@ -476,6 +528,126 @@ pub fn npc_ai(
                 if pos.x == target.x && pos.y == target.y {
                     facing.0 = Direction::Left;
                     npc.state = NpcState::WaitingAtOven;
+                }
+            }
+
+            NpcState::WaitingAtPacker => {
+                if npc.action_timer > 0.0 {
+                    continue;
+                }
+
+                let has_output = station_query
+                    .iter()
+                    .any(|(_, s, sp)| *sp == GridPos { x: 8, y: 5 } && s.kind == StationKind::Packer && s.has_output && !s.busy);
+
+                if has_output {
+                    npc.state = NpcState::CollectingFromPacker;
+                } else {
+                    npc.action_timer = npc.action_cooldown;
+                }
+            }
+
+            NpcState::CollectingFromPacker => {
+                if npc.action_timer > 0.0 {
+                    continue;
+                }
+                facing.0 = Direction::Right;
+                let front_pos = GridPos { x: pos.x + 1, y: pos.y };
+
+                let mut collected = false;
+                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                    if *station_pos == front_pos && station.kind == StationKind::Packer {
+                        if station.has_output && carrying.entity.is_none() {
+                            let item_entity = commands
+                                .spawn((
+                                    Item {
+                                        kind: station.output_kind,
+                                    },
+                                    SpriteBundle {
+                                        sprite: Sprite {
+                                            color: station.output_kind.color(),
+                                            custom_size: Some(Vec2::new(
+                                                TILE_SIZE * 0.45,
+                                                TILE_SIZE * 0.45,
+                                            )),
+                                            ..default()
+                                        },
+                                        transform: Transform::from_translation(Vec3::new(
+                                            transform.translation.x,
+                                            transform.translation.y,
+                                            0.1,
+                                        )),
+                                        ..default()
+                                    },
+                                    GameEntity,
+                                ))
+                                .id();
+                            carrying.entity = Some(item_entity);
+                            carrying.kind = Some(station.output_kind);
+                            station.has_output = false;
+                            collected = true;
+                            npc.state = NpcState::MovingToPalletizer;
+                        }
+                        break;
+                    }
+                }
+
+                if !collected {
+                    npc.action_timer = npc.action_cooldown;
+                }
+            }
+
+            NpcState::MovingToPalletizer => {
+                let target = GridPos { x: 7, y: 1 };
+                try_npc_move(
+                    &mut pos, &mut transform, target,
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
+                );
+
+                if pos.x == target.x && pos.y == target.y {
+                    npc.state = NpcState::InsertingToPalletizer;
+                }
+            }
+
+            NpcState::InsertingToPalletizer => {
+                if npc.action_timer > 0.0 {
+                    continue;
+                }
+                facing.0 = Direction::Left;
+                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
+
+                let mut inserted = false;
+                for (_station_entity, station, station_pos) in station_query.iter_mut() {
+                    if *station_pos == front_pos && station.kind == StationKind::Palletizer {
+                        if carrying.kind == Some(ItemKind::Case) {
+                            if let Some(carried_entity) = carrying.entity {
+                                commands.entity(carried_entity).despawn();
+                                carrying.entity = None;
+                                carrying.kind = None;
+                                shift.cases_completed += 1;
+                            }
+                            inserted = true;
+                            npc.state = NpcState::ReturningToPackerWait;
+                        }
+                        break;
+                    }
+                }
+
+                if !inserted {
+                    npc.action_timer = npc.action_cooldown;
+                }
+            }
+
+            NpcState::ReturningToPackerWait => {
+                let target = GridPos { x: 7, y: 5 };
+                try_npc_move(
+                    &mut pos, &mut transform, target,
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
+                );
+
+                if pos.x == target.x && pos.y == target.y {
+                    facing.0 = Direction::Right;
+                    npc.state = NpcState::WaitingAtPacker;
                 }
             }
         }
