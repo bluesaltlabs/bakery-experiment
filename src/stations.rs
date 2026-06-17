@@ -71,7 +71,8 @@ pub fn update_station_visuals(
         sprite.color = if station.has_output {
             station.kind.color_ready()
         } else if station.busy {
-            station.kind.color_busy()
+            let t = (station.timer / station.process_duration).clamp(0.0, 1.0);
+            station.kind.color_idle().mix(&station.kind.color_busy(), t)
         } else {
             station.kind.color_idle()
         };
