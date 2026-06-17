@@ -169,7 +169,9 @@ pub struct GridLine;
 pub struct DirectionIndicator;
 
 #[derive(Component)]
-pub struct NpcDirectionIndicator;
+pub struct NpcDirectionIndicator {
+    pub npc_entity: Entity,
+}
 
 #[derive(Component)]
 pub struct StationLabel {
@@ -198,6 +200,8 @@ pub struct Npc {
     pub state: NpcState,
     pub move_timer: f32,
     pub action_timer: f32,
+    pub move_cooldown: f32,
+    pub action_cooldown: f32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -210,4 +214,9 @@ pub enum NpcState {
     CollectingFromFormer,
     InsertingToOven,
     ReturningToConveyor,
+    WaitingAtOven,
+    CollectingFromOven,
+    MovingToPacker,
+    InsertingToPacker,
+    ReturningToOvenWait,
 }

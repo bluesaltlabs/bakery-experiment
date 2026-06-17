@@ -105,7 +105,8 @@ fn spawn_player_sys(mut commands: Commands) {
 }
 
 fn spawn_npc_sys(mut commands: Commands) {
-    npc::spawn_npc(&mut commands);
+    npc::spawn_npc1(&mut commands);
+    npc::spawn_npc2(&mut commands);
 }
 
 fn setup_ui_sys(mut commands: Commands) {
