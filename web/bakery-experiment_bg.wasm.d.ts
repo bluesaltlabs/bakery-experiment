@@ -1,0 +1,37 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const main: () => void;
+export const wgpu_render_bundle_draw: (a: number, b: number, c: number, d: number, e: number) => void;
+export const wgpu_render_bundle_draw_indexed: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const wgpu_render_bundle_set_pipeline: (a: number, b: bigint) => void;
+export const wgpu_render_bundle_draw_indirect: (a: number, b: bigint, c: bigint) => void;
+export const wgpu_render_bundle_set_bind_group: (a: number, b: number, c: bigint, d: number, e: number) => void;
+export const wgpu_render_bundle_set_vertex_buffer: (a: number, b: number, c: bigint, d: bigint, e: bigint) => void;
+export const wgpu_render_bundle_set_push_constants: (a: number, b: number, c: number, d: number, e: number) => void;
+export const wgpu_render_bundle_draw_indexed_indirect: (a: number, b: bigint, c: bigint) => void;
+export const wgpu_render_bundle_insert_debug_marker: (a: number, b: number) => void;
+export const wgpu_render_bundle_pop_debug_group: (a: number) => void;
+export const wgpu_render_bundle_set_index_buffer: (a: number, b: bigint, c: number, d: bigint, e: bigint) => void;
+export const wgpu_render_bundle_push_debug_group: (a: number, b: number) => void;
+export const wasm_bindgen__convert__closures_____invoke__h880e94e8c7d94572: (a: number, b: number, c: any) => [number, number];
+export const wasm_bindgen__convert__closures_____invoke__h1a084bf1d059e800: (a: number, b: number, c: any, d: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_3: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_4: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_5: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_6: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_7: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_8: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h01177f1a0a3b662c_9: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h068040b25e8e508d: (a: number, b: number) => void;
+export const wasm_bindgen__convert__closures_____invoke__hb7caf2c9b523b6bd: (a: number, b: number) => void;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __externref_table_alloc: () => number;
+export const __wbindgen_externrefs: WebAssembly.Table;
+export const __wbindgen_exn_store: (a: number) => void;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __wbindgen_destroy_closure: (a: number, b: number) => void;
+export const __externref_table_dealloc: (a: number) => void;
+export const __wbindgen_start: () => void;

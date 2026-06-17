@@ -1,3 +1,5 @@
+#![cfg_attr(target_arch = "wasm32", no_main)]
+
 mod components;
 mod interaction;
 mod level;
@@ -9,17 +11,39 @@ mod ui;
 
 use std::time::Duration;
 use bevy::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use bevy::audio::AudioPlugin;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Bakery Puzzle-Sim".into(),
+    let mut app = App::new();
+
+    #[cfg(target_arch = "wasm32")]
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Bakery Puzzle-Sim".into(),
+                    ..default()
+                }),
                 ..default()
-            }),
+            })
+            .build()
+            .disable::<AudioPlugin>(),
+    );
+
+    #[cfg(not(target_arch = "wasm32"))]
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Bakery Puzzle-Sim".into(),
             ..default()
-        }))
-        .insert_resource(resources::ShiftState::new())
+        }),
+        ..default()
+    }));
+
+    app.insert_resource(resources::ShiftState::new())
         .insert_resource(resources::MovementCooldown({
             let mut t = Timer::from_seconds(0.15, TimerMode::Once);
             t.tick(Duration::from_secs_f32(1.0));
