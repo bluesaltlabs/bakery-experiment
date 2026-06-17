@@ -89,6 +89,7 @@ pub enum StationKind {
     Oven,
     Packer,
     Palletizer,
+    Table,
 }
 
 impl StationKind {
@@ -99,6 +100,7 @@ impl StationKind {
             StationKind::Oven => Color::srgb(0.9, 0.3, 0.1),
             StationKind::Packer => Color::srgb(0.3, 0.3, 0.8),
             StationKind::Palletizer => Color::srgb(0.8, 0.2, 0.8),
+            StationKind::Table => Color::srgb(0.6, 0.4, 0.2),
         }
     }
 
@@ -109,6 +111,7 @@ impl StationKind {
             StationKind::Oven => Color::srgb(0.54, 0.18, 0.06),
             StationKind::Packer => Color::srgb(0.18, 0.18, 0.48),
             StationKind::Palletizer => Color::srgb(0.48, 0.12, 0.48),
+            StationKind::Table => Color::srgb(0.6, 0.4, 0.2),
         }
     }
 
@@ -119,6 +122,7 @@ impl StationKind {
             StationKind::Oven => Color::srgb(1.0, 0.5, 0.3),
             StationKind::Packer => Color::srgb(0.5, 0.5, 1.0),
             StationKind::Palletizer => Color::srgb(1.0, 0.4, 1.0),
+            StationKind::Table => Color::srgb(0.6, 0.4, 0.2),
         }
     }
 
@@ -129,6 +133,7 @@ impl StationKind {
             StationKind::Oven => "Oven",
             StationKind::Packer => "Packer",
             StationKind::Palletizer => "Pallet",
+            StationKind::Table => "Table",
         }.to_string()
     }
 }
@@ -167,3 +172,9 @@ pub struct DirectionIndicator;
 pub struct StationLabel {
     pub station_entity: Entity,
 }
+
+#[derive(Component)]
+pub struct TableMarker;
+
+#[derive(Component)]
+pub struct FloorTimer(pub f32);

@@ -52,6 +52,18 @@ pub fn update_station_labels(
         }
     }
 }
+pub fn tick_floor_timers(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut item_query: Query<(Entity, &mut FloorTimer)>,
+) {
+    for (entity, mut timer) in item_query.iter_mut() {
+        timer.0 -= time.delta_seconds();
+        if timer.0 <= 0.0 {
+            commands.entity(entity).despawn();
+        }
+    }
+}
 pub fn update_station_visuals(
     mut query: Query<(&Station, &mut Sprite)>,
 ) {

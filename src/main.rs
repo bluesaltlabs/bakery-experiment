@@ -63,6 +63,7 @@ fn main() {
                 stations::sync_ground_items,
                 stations::update_station_visuals,
                 stations::update_station_labels,
+                stations::tick_floor_timers,
                 player::update_direction_indicator,
                 level::toggle_grid,
                 ui::update_game_state,

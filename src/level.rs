@@ -13,12 +13,13 @@ const FORMER: u8 = 3;
 const OVEN: u8 = 4;
 const PACKER: u8 = 5;
 const PALLETIZER: u8 = 6;
+const TABLE: u8 = 7;
 
 // Layout (row 0 = top, y=9):
 //   WWWWWWWWWWWW
 //   W..S.......W
 //   W..........W
-//   W..........W
+//   W......T...W   Table at (6,6)
 //   W....W..P..W   wall at (5,5), Packer at (8,5)
 //   W....W.....W   wall at (5,4)
 //   W..F.......W
@@ -29,7 +30,7 @@ const LEVEL_DATA: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
     [1,1,1,1,1,1,1,1,1,1,1,1], // y=9 (top)
     [1,0,0,2,0,0,0,0,0,0,0,1], // y=8  Source at (3,8)
     [1,0,0,0,0,0,0,0,0,0,0,1], // y=7
-    [1,0,0,0,0,0,0,0,0,0,0,1], // y=6
+    [1,0,0,0,0,0,7,0,0,0,0,1], // y=6  Table at (6,6)
     [1,0,0,0,0,1,0,0,5,0,0,1], // y=5  wall at (5,5), Packer at (8,5)
     [1,0,0,0,0,1,0,0,0,0,0,1], // y=4  wall at (5,4)
     [1,0,0,3,0,0,0,0,0,0,0,1], // y=3  Former at (3,3)
@@ -85,6 +86,9 @@ pub fn setup_level(commands: &mut Commands) {
                 PALLETIZER => {
                     spawn_station(commands, pos, StationKind::Palletizer);
                 }
+                TABLE => {
+                    spawn_station(commands, pos, StationKind::Table);
+                }
                 _ => {
                     commands.spawn((
                         SpriteBundle {
@@ -114,6 +118,7 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
         StationKind::Oven => (ItemKind::RawCrustTray, ItemKind::BakedCrustTray, 5.0, 0.0),
         StationKind::Packer => (ItemKind::BakedCrustTray, ItemKind::Case, 2.0, 0.0),
         StationKind::Palletizer => (ItemKind::Case, ItemKind::Case, 0.0, 0.0),
+        StationKind::Table => (ItemKind::DoughBatch, ItemKind::DoughBatch, 0.0, 0.0),
     };
 
     let inputs_needed = match kind {
@@ -149,6 +154,10 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
         },
         GameEntity,
     )).id();
+
+    if kind == StationKind::Table {
+        commands.entity(station_entity).insert(TableMarker);
+    }
 
     let label_prefix = kind.label();
     let label_suffix = if kind == StationKind::Packer {

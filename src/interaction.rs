@@ -24,7 +24,8 @@ pub fn player_interaction(
     keys: Res<ButtonInput<KeyCode>>,
     mut shift: ResMut<ShiftState>,
     mut player_query: Query<(&GridPos, &Facing, &mut Carrying, &Transform), With<Player>>,
-    mut station_query: Query<(Entity, &mut Station, &GridPos)>,
+    mut station_query: Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Player>)>,
+    table_query: Query<(Entity, &Station, &GridPos), (With<TableMarker>, Without<Player>)>,
     item_on_ground_query: Query<(Entity, &Item, &GridPos)>,
     solid_query: Query<&GridPos, (With<Solid>, Without<Player>)>,
     mut commands: Commands,
@@ -43,6 +44,26 @@ pub fn player_interaction(
         x: player_pos.x + delta.0,
         y: player_pos.y + delta.1,
     };
+
+    // Handle Table station: drop/pickup items
+    for (_table_entity, _table, table_pos) in table_query.iter() {
+        if *table_pos != front_pos {
+            continue;
+        }
+
+        match carrying.entity {
+            Some(_carried_entity) => {
+                commands.entity(_carried_entity).insert(front_pos);
+                carrying.entity = None;
+                carrying.kind = None;
+                return;
+            }
+            None => {
+                // Let ground pickup code handle it below
+            }
+        }
+        break;
+    }
 
     for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
         if *station_pos != front_pos {
@@ -116,9 +137,10 @@ pub fn player_interaction(
     if carrying.entity.is_none() {
         for (item_entity, item, ground_pos) in item_on_ground_query.iter() {
             if *ground_pos == front_pos {
+                commands.entity(item_entity).remove::<GridPos>();
+                commands.entity(item_entity).remove::<FloorTimer>();
                 carrying.entity = Some(item_entity);
                 carrying.kind = Some(item.kind);
-                commands.entity(item_entity).remove::<GridPos>();
                 return;
             }
         }
@@ -126,11 +148,11 @@ pub fn player_interaction(
 
     if let Some(carried_entity) = carrying.entity {
         let blocked = solid_query.iter().any(|gp| *gp == front_pos)
-            || station_query.iter().any(|(_, _, gp)| *gp == front_pos)
             || item_on_ground_query.iter().any(|(_, _, gp)| *gp == front_pos);
 
         if !blocked {
             commands.entity(carried_entity).insert(front_pos);
+            commands.entity(carried_entity).insert(FloorTimer(10.0));
             carrying.entity = None;
             carrying.kind = None;
         }
