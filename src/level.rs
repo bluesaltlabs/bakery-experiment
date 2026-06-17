@@ -116,9 +116,14 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
         StationKind::Palletizer => (ItemKind::Case, ItemKind::Case, 0.0, 0.0),
     };
 
+    let inputs_needed = match kind {
+        StationKind::Packer => 3,
+        _ => 1,
+    };
+
     let world_pos = grid_to_world(pos);
 
-    commands.spawn((
+    let station_entity = commands.spawn((
         SpriteBundle {
             sprite: Sprite {
                 color: kind.color_idle(),
@@ -138,16 +143,24 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
             busy: false,
             has_output: false,
             packer_count: 0,
+            inputs_needed,
             spawn_timer: 0.0,
             spawn_interval,
         },
         GameEntity,
-    ));
+    )).id();
 
-            commands.spawn((
+    let label_prefix = kind.label();
+    let label_suffix = if kind == StationKind::Packer {
+        format!(" 0/{}", inputs_needed)
+    } else {
+        String::new()
+    };
+
+    commands.spawn((
         Text2dBundle {
             text: Text::from_section(
-                kind.label(),
+                format!("{}{}", label_prefix, label_suffix),
                 TextStyle {
                     font_size: 12.0,
                     color: Color::WHITE,
@@ -162,6 +175,7 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
             )),
             ..default()
         },
+        StationLabel { station_entity },
         GameEntity,
     ));
 }

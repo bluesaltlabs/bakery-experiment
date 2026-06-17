@@ -46,6 +46,7 @@ pub fn player_movement(
         pos.x = new_pos.x;
         pos.y = new_pos.y;
         transform.translation = grid_to_world(new_pos);
+        transform.translation.z = 0.01;
     }
 
     cooldown.0.reset();

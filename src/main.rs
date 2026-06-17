@@ -26,6 +26,7 @@ fn main() {
             .set(WindowPlugin {
                 primary_window: Some(Window {
                     title: "Bakery Puzzle-Sim".into(),
+                    visible: true,
                     ..default()
                 }),
                 ..default()
@@ -38,6 +39,7 @@ fn main() {
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "Bakery Puzzle-Sim".into(),
+            visible: true,
             ..default()
         }),
         ..default()
@@ -60,6 +62,8 @@ fn main() {
                 stations::process_stations,
                 stations::sync_ground_items,
                 stations::update_station_visuals,
+                stations::update_station_labels,
+                player::update_direction_indicator,
                 level::toggle_grid,
                 ui::update_game_state,
                 ui::update_ui,

@@ -34,6 +34,24 @@ pub fn sync_ground_items(
     }
 }
 
+pub fn update_station_labels(
+    station_query: Query<&Station>,
+    mut label_query: Query<(&StationLabel, &mut Text)>,
+) {
+    for (label, mut text) in label_query.iter_mut() {
+        if let Ok(station) = station_query.get(label.station_entity) {
+            if station.kind == StationKind::Packer && !station.busy {
+                text.sections[0].value = format!(
+                    "Packer {}/{}",
+                    station.packer_count,
+                    station.inputs_needed,
+                );
+            } else {
+                text.sections[0].value = station.kind.label();
+            }
+        }
+    }
+}
 pub fn update_station_visuals(
     mut query: Query<(&Station, &mut Sprite)>,
 ) {

@@ -143,6 +143,7 @@ pub struct Station {
     pub busy: bool,
     pub has_output: bool,
     pub packer_count: u32,
+    pub inputs_needed: u32,
     pub spawn_timer: f32,
     pub spawn_interval: f32,
 }
@@ -158,3 +159,11 @@ pub struct HudText;
 
 #[derive(Component)]
 pub struct GridLine;
+
+#[derive(Component)]
+pub struct DirectionIndicator;
+
+#[derive(Component)]
+pub struct StationLabel {
+    pub station_entity: Entity,
+}
