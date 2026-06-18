@@ -76,6 +76,14 @@ pub fn setup_ui(commands: &mut Commands) {
                     ..default()
                 },
             ),
+            TextSection::new(
+                "\n\nStations:",
+                TextStyle {
+                    font_size: 14.0,
+                    color: Color::srgb(0.7, 0.7, 0.7),
+                    ..default()
+                },
+            ),
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
@@ -111,6 +119,7 @@ pub fn update_ui(
     shift: Res<ShiftState>,
     player_query: Query<&Carrying, With<Player>>,
     mut text_query: Query<&mut Text, With<HudText>>,
+    station_query: Query<&Station>,
 ) {
     if shift.game_over {
         return;
@@ -128,6 +137,55 @@ pub fn update_ui(
         text.sections[0].value = format!("Time: {:.0}", shift.time_remaining);
         text.sections[1].value = format!("\nCases: {}/{}", shift.cases_completed, shift.target_cases);
         text.sections[2].value = format!("\nCarrying: {}", carrying_name);
+
+        let mut stations: Vec<&Station> = station_query.iter().collect();
+        stations.sort_by(|a, b| {
+            fn order(k: &StationKind) -> u8 {
+                match k {
+                    StationKind::Source => 0,
+                    StationKind::Former => 1,
+                    StationKind::Oven => 2,
+                    StationKind::Packer => 3,
+                    StationKind::Palletizer => 4,
+                    StationKind::Table => 5,
+                }
+            }
+            order(&a.kind).cmp(&order(&b.kind))
+        });
+
+        let mut debug = String::from("\n\nStations:");
+        for station in stations {
+            let pct = if station.busy {
+                (station.timer / station.process_duration * 100.0) as u32
+            } else if station.kind == StationKind::Source {
+                (station.spawn_timer / station.spawn_interval * 100.0) as u32
+            } else {
+                0
+            };
+            let status = if station.has_output {
+                station.output_kind.label()
+            } else if station.busy {
+                "processing"
+            } else if station.packer_count > 0 {
+                "partial"
+            } else {
+                "empty"
+            };
+            debug.push_str(&format!(
+                "\n  {}: {}",
+                station.kind.label(),
+                status,
+            ));
+            if station.busy {
+                debug.push_str(&format!(" ({}%)", pct));
+            } else if station.kind == StationKind::Source && pct > 0 {
+                debug.push_str(&format!(" ({}%)", pct));
+            }
+            if station.kind == StationKind::Packer && station.packer_count > 0 {
+                debug.push_str(&format!(" {}/{}", station.packer_count, station.inputs_needed));
+            }
+        }
+        text.sections[3].value = debug;
     }
 }
 
