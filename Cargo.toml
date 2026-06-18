@@ -4,10 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = "0.14"
+bevy = { version = "0.14", features = ["wav"] }
 wasm-bindgen = "0.2"
 getrandom = { version = "0.4", features = ["wasm_js"] }
 uuid = { version = "1", features = ["rng-getrandom"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom_03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "AudioContext",
+    "AudioContextState",
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "OscillatorNode",
+    "OscillatorType",
+    "GainNode",
+    "AudioNode",
+    "AudioDestinationNode",
+    "AudioParam",
+] }

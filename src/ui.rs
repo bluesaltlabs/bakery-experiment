@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use crate::audio::{AudioEvent, UserVolume};
 use crate::components::*;
 use crate::resources::{GridVisible, ShiftState};
 use crate::level::*;
@@ -7,20 +8,33 @@ use crate::npc;
 pub fn update_game_state(
     time: Res<Time>,
     mut shift: ResMut<ShiftState>,
+    mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
     if shift.game_over {
         return;
     }
 
     shift.time_remaining -= time.delta_seconds();
+
+    if shift.time_remaining <= 30.0 && shift.time_remaining > 0.0
+        && shift.time_remaining.floor() != (shift.time_remaining + time.delta_seconds()).floor()
+    {
+        audio_queue.0.push(AudioEvent::TimerWarning);
+    }
+
     if shift.time_remaining <= 0.0 {
         shift.time_remaining = 0.0;
         shift.game_over = true;
         shift.victory = shift.cases_completed >= shift.target_cases;
-    }
-    if shift.cases_completed >= shift.target_cases {
+        if shift.victory {
+            audio_queue.0.push(AudioEvent::Win);
+        } else {
+            audio_queue.0.push(AudioEvent::Lose);
+        }
+    } else if shift.cases_completed >= shift.target_cases {
         shift.game_over = true;
         shift.victory = true;
+        audio_queue.0.push(AudioEvent::Win);
     }
 }
 
@@ -77,6 +91,14 @@ pub fn setup_ui(commands: &mut Commands) {
                 },
             ),
             TextSection::new(
+                "\nVolume: 80%",
+                TextStyle {
+                    font_size: 14.0,
+                    color: Color::srgb(0.6, 0.6, 0.9),
+                    ..default()
+                },
+            ),
+            TextSection::new(
                 "\n\nStations:",
                 TextStyle {
                     font_size: 14.0,
@@ -115,11 +137,24 @@ pub fn setup_ui(commands: &mut Commands) {
     ));
 }
 
+pub fn keyboard_volume_control(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut volume: ResMut<UserVolume>,
+) {
+    if keys.just_pressed(KeyCode::Comma) {
+        volume.0 = (volume.0 - 0.05).max(0.0);
+    }
+    if keys.just_pressed(KeyCode::Period) {
+        volume.0 = (volume.0 + 0.05).min(1.0);
+    }
+}
+
 pub fn update_ui(
     shift: Res<ShiftState>,
     player_query: Query<&Carrying, With<Player>>,
     mut text_query: Query<&mut Text, With<HudText>>,
     station_query: Query<&Station>,
+    volume: Res<UserVolume>,
 ) {
     if shift.game_over {
         return;
@@ -137,6 +172,7 @@ pub fn update_ui(
         text.sections[0].value = format!("Time: {:.0}", shift.time_remaining);
         text.sections[1].value = format!("\nCases: {}/{}", shift.cases_completed, shift.target_cases);
         text.sections[2].value = format!("\nCarrying: {}", carrying_name);
+        text.sections[3].value = format!("\nVolume: {:.0}%", volume.0 * 100.0);
 
         let mut stations: Vec<&Station> = station_query.iter().collect();
         stations.sort_by(|a, b| {
@@ -185,7 +221,7 @@ pub fn update_ui(
                 debug.push_str(&format!(" {}/{}", station.packer_count, station.inputs_needed));
             }
         }
-        text.sections[3].value = debug;
+        text.sections[4].value = debug;
     }
 }
 

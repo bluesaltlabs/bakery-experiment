@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use crate::audio::AudioEvent;
 use crate::components::*;
 use crate::level::spawn_item_entity;
 use crate::resources::ShiftState;
@@ -146,6 +147,7 @@ pub fn player_interaction(
     solid_query: Query<&GridPos, (With<Solid>, Without<Player>)>,
     conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
     mut commands: Commands,
+    mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
     if !keys.just_pressed(KeyCode::KeyE) && !keys.just_pressed(KeyCode::Space) {
         return;
@@ -162,6 +164,7 @@ pub fn player_interaction(
     };
 
     if try_table_interaction(&mut commands, &mut carrying, front_pos, &table_query) {
+        audio_queue.0.push(AudioEvent::Drop);
         return;
     }
 
@@ -170,17 +173,22 @@ pub fn player_interaction(
             continue;
         }
         if try_station_deposit(&mut commands, &mut shift, &mut carrying, &mut station) {
+            audio_queue.0.push(AudioEvent::StationDeposit);
             return;
         }
         if try_station_pickup(&mut commands, &mut carrying, &player_transform, &mut station) {
+            audio_queue.0.push(AudioEvent::Pickup);
             return;
         }
         return;
     }
 
     if try_ground_pickup(&mut commands, &mut carrying, front_pos, &item_on_ground_query) {
+        audio_queue.0.push(AudioEvent::Pickup);
         return;
     }
 
-    try_ground_drop(&mut commands, &mut carrying, front_pos, &conveyor_query, &solid_query, &item_on_ground_query);
+    if try_ground_drop(&mut commands, &mut carrying, front_pos, &conveyor_query, &solid_query, &item_on_ground_query) {
+        audio_queue.0.push(AudioEvent::Drop);
+    }
 }

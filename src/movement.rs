@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use crate::audio::AudioEventQueue;
 use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Npc, Player, Solid, Station};
 use crate::level::grid_to_world;
 use crate::resources::MovementCooldown;
@@ -12,6 +13,7 @@ pub fn player_movement(
     station_query: Query<&GridPos, (With<Station>, Without<Player>)>,
     conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
     npc_query: Query<&GridPos, (With<Npc>, Without<Player>)>,
+    mut audio_queue: ResMut<AudioEventQueue>,
 ) {
     cooldown.0.tick(time.delta());
     if !cooldown.0.finished() {
@@ -51,6 +53,7 @@ pub fn player_movement(
         pos.y = new_pos.y;
         transform.translation = grid_to_world(new_pos);
         transform.translation.z = 0.01;
+        audio_queue.0.push(crate::audio::AudioEvent::Step);
     }
 
     cooldown.0.reset();

@@ -1,5 +1,6 @@
 #![cfg_attr(target_arch = "wasm32", no_main)]
 
+mod audio;
 mod components;
 mod interaction;
 mod level;
@@ -48,6 +49,8 @@ fn main() {
         ..default()
     }));
 
+    audio::setup_audio_system(&mut app);
+
     app.insert_resource(resources::ShiftState::new())
         .insert_resource(resources::MovementCooldown({
             let mut t = Timer::from_seconds(0.15, TimerMode::Once);
@@ -81,6 +84,7 @@ fn main() {
                 ui::update_ui,
                 ui::show_game_over,
                 ui::handle_restart,
+                ui::keyboard_volume_control,
             ),
         )
         .run();

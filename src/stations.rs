@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use crate::audio::AudioEvent;
 use crate::components::*;
 use crate::level::{grid_to_world, TILE_SIZE};
 use crate::resources::ConveyorTimerResource;
@@ -6,6 +7,7 @@ use crate::resources::ConveyorTimerResource;
 pub fn process_stations(
     time: Res<Time>,
     mut station_query: Query<&mut Station>,
+    mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
     for mut station in station_query.iter_mut() {
         if station.kind == StationKind::Source && !station.has_output {
@@ -22,6 +24,7 @@ pub fn process_stations(
                 station.busy = false;
                 station.timer = 0.0;
                 station.has_output = true;
+                audio_queue.0.push(AudioEvent::StationComplete);
             }
         }
     }
@@ -38,6 +41,7 @@ pub fn process_conveyors(
         Query<(Entity, &mut GridPos), (With<Item>, Without<Player>)>,
     )>,
     mut commands: Commands,
+    mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
     conveyor_timer.0.tick(time.delta());
     if !conveyor_timer.0.finished() {
@@ -51,6 +55,7 @@ pub fn process_conveyors(
 
     let occupied: Vec<GridPos> = item_params.p0().iter().copied().collect();
 
+    let mut moved = false;
     for (entity, mut item_pos) in item_params.p1().iter_mut() {
         if let Some((_, dir)) = belts.iter().find(|(bp, _)| *bp == *item_pos) {
             let delta = dir.delta();
@@ -67,8 +72,12 @@ pub fn process_conveyors(
                 item_pos.x = next_pos.x;
                 item_pos.y = next_pos.y;
                 commands.entity(entity).remove::<FloorTimer>();
+                moved = true;
             }
         }
+    }
+    if moved {
+        audio_queue.0.push(AudioEvent::ConveyorTick);
     }
 }
 
