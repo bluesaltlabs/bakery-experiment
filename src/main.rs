@@ -16,7 +16,16 @@ use bevy::prelude::*;
 use bevy::audio::AudioPlugin;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+use components::{Direction, GridPos, NpcState};
 use resources::ConveyorTimerResource;
+
+fn make_window() -> Window {
+    Window {
+        title: "Bakery Puzzle-Sim".into(),
+        visible: true,
+        ..default()
+    }
+}
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 fn main() {
@@ -26,11 +35,7 @@ fn main() {
     app.add_plugins(
         DefaultPlugins
             .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Bakery Puzzle-Sim".into(),
-                    visible: true,
-                    ..default()
-                }),
+                primary_window: Some(make_window()),
                 ..default()
             })
             .build()
@@ -39,11 +44,7 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Bakery Puzzle-Sim".into(),
-            visible: true,
-            ..default()
-        }),
+        primary_window: Some(make_window()),
         ..default()
     }));
 
@@ -105,9 +106,37 @@ fn spawn_player_sys(mut commands: Commands) {
 }
 
 fn spawn_npc_sys(mut commands: Commands) {
-    crate::npc::spawn_npc1(&mut commands);
-    crate::npc::spawn_npc2(&mut commands);
-    crate::npc::spawn_npc3(&mut commands);
+    use bevy::color::Color;
+    crate::npc::spawn_npc(
+        &mut commands,
+        GridPos { x: 4, y: 4 },
+        Color::srgb(1.0, 0.5, 0.0),
+        Color::srgb(1.0, 0.7, 0.3),
+        Direction::Left,
+        NpcState::WaitingAtConveyor,
+        1.0,
+        0.5,
+    );
+    crate::npc::spawn_npc(
+        &mut commands,
+        GridPos { x: 5, y: 2 },
+        Color::srgb(0.2, 0.8, 0.5),
+        Color::srgb(0.4, 1.0, 0.6),
+        Direction::Left,
+        NpcState::WaitingAtOven,
+        0.5,
+        0.25,
+    );
+    crate::npc::spawn_npc(
+        &mut commands,
+        GridPos { x: 7, y: 5 },
+        Color::srgb(0.3, 0.5, 0.9),
+        Color::srgb(0.5, 0.7, 1.0),
+        Direction::Right,
+        NpcState::WaitingAtPacker,
+        0.5,
+        0.25,
+    );
 }
 
 fn setup_ui_sys(mut commands: Commands) {

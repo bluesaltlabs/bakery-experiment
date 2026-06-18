@@ -32,20 +32,23 @@ impl Direction {
             Direction::Right => (1, 0),
         }
     }
+
+    pub fn indicator_offset(&self, half: f32, bar_half: f32) -> (f32, f32, f32, f32) {
+        match self {
+            Direction::Up => (0.0, half - bar_half, 2.0 * half, 2.0 * bar_half),
+            Direction::Down => (0.0, -(half - bar_half), 2.0 * half, 2.0 * bar_half),
+            Direction::Left => (-(half - bar_half), 0.0, 2.0 * bar_half, 2.0 * half),
+            Direction::Right => (half - bar_half, 0.0, 2.0 * bar_half, 2.0 * half),
+        }
+    }
 }
 
 #[derive(Component)]
-pub struct Carrying {
-    pub entity: Option<Entity>,
-    pub kind: Option<ItemKind>,
-}
+pub struct Carrying(pub Option<(Entity, ItemKind)>);
 
 impl Carrying {
     pub fn empty() -> Self {
-        Carrying {
-            entity: None,
-            kind: None,
-        }
+        Carrying(None)
     }
 }
 
@@ -93,38 +96,20 @@ pub enum StationKind {
 }
 
 impl StationKind {
-    pub fn color_idle(&self) -> Color {
+    pub fn colors(&self) -> (Color, Color, Color) {
         match self {
-            StationKind::Source => Color::srgb(0.2, 0.8, 0.2),
-            StationKind::Former => Color::srgb(0.8, 0.5, 0.2),
-            StationKind::Oven => Color::srgb(0.9, 0.3, 0.1),
-            StationKind::Packer => Color::srgb(0.3, 0.3, 0.8),
-            StationKind::Palletizer => Color::srgb(0.8, 0.2, 0.8),
-            StationKind::Table => Color::srgb(0.6, 0.4, 0.2),
+            StationKind::Source => (Color::srgb(0.2, 0.8, 0.2), Color::srgb(0.12, 0.48, 0.12), Color::srgb(0.4, 1.0, 0.4)),
+            StationKind::Former => (Color::srgb(0.8, 0.5, 0.2), Color::srgb(0.48, 0.30, 0.12), Color::srgb(1.0, 0.7, 0.4)),
+            StationKind::Oven => (Color::srgb(0.9, 0.3, 0.1), Color::srgb(0.54, 0.18, 0.06), Color::srgb(1.0, 0.5, 0.3)),
+            StationKind::Packer => (Color::srgb(0.3, 0.3, 0.8), Color::srgb(0.18, 0.18, 0.48), Color::srgb(0.5, 0.5, 1.0)),
+            StationKind::Palletizer => (Color::srgb(0.8, 0.2, 0.8), Color::srgb(0.48, 0.12, 0.48), Color::srgb(1.0, 0.4, 1.0)),
+            StationKind::Table => (Color::srgb(0.6, 0.4, 0.2), Color::srgb(0.6, 0.4, 0.2), Color::srgb(0.6, 0.4, 0.2)),
         }
     }
 
-    pub fn color_busy(&self) -> Color {
-        match self {
-            StationKind::Source => Color::srgb(0.12, 0.48, 0.12),
-            StationKind::Former => Color::srgb(0.48, 0.30, 0.12),
-            StationKind::Oven => Color::srgb(0.54, 0.18, 0.06),
-            StationKind::Packer => Color::srgb(0.18, 0.18, 0.48),
-            StationKind::Palletizer => Color::srgb(0.48, 0.12, 0.48),
-            StationKind::Table => Color::srgb(0.6, 0.4, 0.2),
-        }
-    }
-
-    pub fn color_ready(&self) -> Color {
-        match self {
-            StationKind::Source => Color::srgb(0.4, 1.0, 0.4),
-            StationKind::Former => Color::srgb(1.0, 0.7, 0.4),
-            StationKind::Oven => Color::srgb(1.0, 0.5, 0.3),
-            StationKind::Packer => Color::srgb(0.5, 0.5, 1.0),
-            StationKind::Palletizer => Color::srgb(1.0, 0.4, 1.0),
-            StationKind::Table => Color::srgb(0.6, 0.4, 0.2),
-        }
-    }
+    pub fn color_idle(&self) -> Color { self.colors().0 }
+    pub fn color_busy(&self) -> Color { self.colors().1 }
+    pub fn color_ready(&self) -> Color { self.colors().2 }
 
     pub fn label(&self) -> String {
         match self {

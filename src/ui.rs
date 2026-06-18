@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::components::*;
 use crate::resources::{GridVisible, ShiftState};
 use crate::level::*;
+use crate::npc;
 
 pub fn update_game_state(
     time: Res<Time>,
@@ -42,9 +43,9 @@ pub fn handle_restart(
     grid_visible.0 = true;
     setup_level(&mut commands);
     crate::player::spawn_player(&mut commands);
-    crate::npc::spawn_npc1(&mut commands);
-    crate::npc::spawn_npc2(&mut commands);
-    crate::npc::spawn_npc3(&mut commands);
+    npc::spawn_npc(&mut commands, GridPos { x: 4, y: 4 }, Color::srgb(1.0, 0.5, 0.0), Color::srgb(1.0, 0.7, 0.3), crate::components::Direction::Left, crate::components::NpcState::WaitingAtConveyor, 1.0, 0.5);
+    npc::spawn_npc(&mut commands, GridPos { x: 5, y: 2 }, Color::srgb(0.2, 0.8, 0.5), Color::srgb(0.4, 1.0, 0.6), crate::components::Direction::Left, crate::components::NpcState::WaitingAtOven, 0.5, 0.25);
+    npc::spawn_npc(&mut commands, GridPos { x: 7, y: 5 }, Color::srgb(0.3, 0.5, 0.9), Color::srgb(0.5, 0.7, 1.0), crate::components::Direction::Right, crate::components::NpcState::WaitingAtPacker, 0.5, 0.25);
     setup_ui(&mut commands);
 }
 
@@ -116,8 +117,8 @@ pub fn update_ui(
     }
 
     let carrying_name = match player_query.iter().next() {
-        Some(carrying) => match carrying.kind {
-            Some(kind) => kind.label().to_string(),
+        Some(carrying) => match carrying.0 {
+            Some((_, kind)) => kind.label().to_string(),
             None => "None".to_string(),
         },
         None => "None".to_string(),

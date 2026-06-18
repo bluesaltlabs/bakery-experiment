@@ -246,39 +246,58 @@ fn spawn_gridlines(commands: &mut Commands) {
     let map_w = MAP_WIDTH as f32 * TILE_SIZE;
     let map_h = MAP_HEIGHT as f32 * TILE_SIZE;
 
-    for col in 0..=MAP_WIDTH {
-        let x = col as f32 * TILE_SIZE;
-        commands.spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: GRID_LINE_COLOR,
-                    custom_size: Some(Vec2::new(GRID_LINE_WIDTH, map_h)),
+    for i in 0..=MAP_WIDTH.max(MAP_HEIGHT) {
+        if i <= MAP_WIDTH {
+            let x = i as f32 * TILE_SIZE;
+            commands.spawn((
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: GRID_LINE_COLOR,
+                        custom_size: Some(Vec2::new(GRID_LINE_WIDTH, map_h)),
+                        ..default()
+                    },
+                    transform: Transform::from_translation(Vec3::new(x, map_h / 2.0, 0.5)),
                     ..default()
                 },
-                transform: Transform::from_translation(Vec3::new(x, map_h / 2.0, 0.5)),
-                ..default()
-            },
-            GameEntity,
-            GridLine,
-        ));
+                GameEntity,
+                GridLine,
+            ));
+        }
+        if i <= MAP_HEIGHT {
+            let y = i as f32 * TILE_SIZE;
+            commands.spawn((
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: GRID_LINE_COLOR,
+                        custom_size: Some(Vec2::new(map_w, GRID_LINE_WIDTH)),
+                        ..default()
+                    },
+                    transform: Transform::from_translation(Vec3::new(map_w / 2.0, y, 0.5)),
+                    ..default()
+                },
+                GameEntity,
+                GridLine,
+            ));
+        }
     }
+}
 
-    for row in 0..=MAP_HEIGHT {
-        let y = row as f32 * TILE_SIZE;
-        commands.spawn((
+pub fn spawn_item_entity(commands: &mut Commands, kind: ItemKind, position: Vec3) -> Entity {
+    commands
+        .spawn((
+            Item { kind },
             SpriteBundle {
                 sprite: Sprite {
-                    color: GRID_LINE_COLOR,
-                    custom_size: Some(Vec2::new(map_w, GRID_LINE_WIDTH)),
+                    color: kind.color(),
+                    custom_size: Some(Vec2::new(TILE_SIZE * 0.45, TILE_SIZE * 0.45)),
                     ..default()
                 },
-                transform: Transform::from_translation(Vec3::new(map_w / 2.0, y, 0.5)),
+                transform: Transform::from_translation(position),
                 ..default()
             },
             GameEntity,
-            GridLine,
-        ));
-    }
+        ))
+        .id()
 }
 
 pub fn toggle_grid(

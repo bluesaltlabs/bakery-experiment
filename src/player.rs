@@ -57,14 +57,10 @@ pub fn update_direction_indicator(
     let Ok((player_transform, facing)) = player_query.get_single() else { return };
     let Ok((mut transform, mut sprite)) = indicator_query.get_single_mut() else { return };
 
-    let half = TILE_SIZE * 0.35;
-    let bar_half = TILE_SIZE * 0.075;
-    let (offset_x, offset_y, width, height) = match facing.0 {
-        crate::components::Direction::Up => (0.0, half - bar_half, TILE_SIZE * 0.7, TILE_SIZE * 0.15),
-        crate::components::Direction::Down => (0.0, -(half - bar_half), TILE_SIZE * 0.7, TILE_SIZE * 0.15),
-        crate::components::Direction::Left => (-(half - bar_half), 0.0, TILE_SIZE * 0.15, TILE_SIZE * 0.7),
-        crate::components::Direction::Right => (half - bar_half, 0.0, TILE_SIZE * 0.15, TILE_SIZE * 0.7),
-    };
+    let (offset_x, offset_y, width, height) = facing.0.indicator_offset(
+        TILE_SIZE * 0.35,
+        TILE_SIZE * 0.075,
+    );
     transform.translation = Vec3::new(
         player_transform.translation.x + offset_x,
         player_transform.translation.y + offset_y,

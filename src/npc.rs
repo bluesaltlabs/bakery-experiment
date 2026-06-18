@@ -4,20 +4,28 @@ use crate::components::{
     ItemKind, Npc, NpcDirectionIndicator, NpcState, Player, Solid, Station, StationKind,
     TableMarker,
 };
-use crate::level::{grid_to_world, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT};
+use crate::level::{grid_to_world, spawn_item_entity, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT};
 use crate::resources::ShiftState;
 
 const NPC_Z: f32 = 0.02;
 
-pub fn spawn_npc1(commands: &mut Commands) {
-    let pos = GridPos { x: 4, y: 4 };
+pub fn spawn_npc(
+    commands: &mut Commands,
+    pos: GridPos,
+    body_color: Color,
+    indicator_color: Color,
+    facing: Direction,
+    state: NpcState,
+    move_cooldown: f32,
+    action_cooldown: f32,
+) {
     let world_pos = grid_to_world(pos);
 
     let npc_entity = commands
         .spawn((
             SpriteBundle {
                 sprite: Sprite {
-                    color: Color::srgb(1.0, 0.5, 0.0),
+                    color: body_color,
                     custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
                     ..default()
                 },
@@ -29,14 +37,14 @@ pub fn spawn_npc1(commands: &mut Commands) {
                 ..default()
             },
             pos,
-            Facing(Direction::Left),
+            Facing(facing),
             Carrying::empty(),
             Npc {
-                state: NpcState::WaitingAtConveyor,
+                state,
                 move_timer: 0.0,
                 action_timer: 0.0,
-                move_cooldown: 1.0,
-                action_cooldown: 0.5,
+                move_cooldown,
+                action_cooldown,
             },
             GameEntity,
         ))
@@ -45,111 +53,7 @@ pub fn spawn_npc1(commands: &mut Commands) {
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: Color::srgb(1.0, 0.7, 0.3),
-                custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.15)),
-                ..default()
-            },
-            transform: Transform::from_translation(Vec3::new(
-                world_pos.x,
-                world_pos.y + TILE_SIZE * 0.35 - TILE_SIZE * 0.075,
-                0.05,
-            )),
-            ..default()
-        },
-        NpcDirectionIndicator { npc_entity },
-        GameEntity,
-    ));
-}
-
-pub fn spawn_npc2(commands: &mut Commands) {
-    let pos = GridPos { x: 5, y: 2 };
-    let world_pos = grid_to_world(pos);
-
-    let npc_entity = commands
-        .spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: Color::srgb(0.2, 0.8, 0.5),
-                    custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
-                    ..default()
-                },
-                transform: Transform::from_translation(Vec3::new(
-                    world_pos.x,
-                    world_pos.y,
-                    NPC_Z,
-                )),
-                ..default()
-            },
-            pos,
-            Facing(Direction::Left),
-            Carrying::empty(),
-            Npc {
-                state: NpcState::WaitingAtOven,
-                move_timer: 0.0,
-                action_timer: 0.0,
-                move_cooldown: 0.5,
-                action_cooldown: 0.25,
-            },
-            GameEntity,
-        ))
-        .id();
-
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::srgb(0.4, 1.0, 0.6),
-                custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.15)),
-                ..default()
-            },
-            transform: Transform::from_translation(Vec3::new(
-                world_pos.x,
-                world_pos.y + TILE_SIZE * 0.35 - TILE_SIZE * 0.075,
-                0.05,
-            )),
-            ..default()
-        },
-        NpcDirectionIndicator { npc_entity },
-        GameEntity,
-    ));
-}
-
-pub fn spawn_npc3(commands: &mut Commands) {
-    let pos = GridPos { x: 7, y: 5 };
-    let world_pos = grid_to_world(pos);
-
-    let npc_entity = commands
-        .spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: Color::srgb(0.3, 0.5, 0.9),
-                    custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.7)),
-                    ..default()
-                },
-                transform: Transform::from_translation(Vec3::new(
-                    world_pos.x,
-                    world_pos.y,
-                    NPC_Z,
-                )),
-                ..default()
-            },
-            pos,
-            Facing(Direction::Right),
-            Carrying::empty(),
-            Npc {
-                state: NpcState::WaitingAtPacker,
-                move_timer: 0.0,
-                action_timer: 0.0,
-                move_cooldown: 0.5,
-                action_cooldown: 0.25,
-            },
-            GameEntity,
-        ))
-        .id();
-
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::srgb(0.5, 0.7, 1.0),
+                color: indicator_color,
                 custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.15)),
                 ..default()
             },
@@ -221,11 +125,10 @@ pub fn npc_ai(
                         None
                     }
                 }) {
-                    if carrying.entity.is_none() {
+                    if carrying.0.is_none() {
                         commands.entity(item_entity).remove::<GridPos>();
                         commands.entity(item_entity).remove::<FloorTimer>();
-                        carrying.entity = Some(item_entity);
-                        carrying.kind = Some(item_kind);
+                        carrying.0 = Some((item_entity, item_kind));
                         picked_up = true;
                     }
                 }
@@ -239,13 +142,7 @@ pub fn npc_ai(
             }
 
             NpcState::MovingToFormer => {
-                let target = GridPos { x: 4, y: 3 };
-                try_npc_move(
-                    &mut pos, &mut transform, target,
-                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
-                );
-
-                if pos.x == target.x && pos.y == target.y {
+                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 4, y: 3 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
                     npc.state = NpcState::InsertingToFormer;
                 }
             }
@@ -258,16 +155,15 @@ pub fn npc_ai(
                 let front_pos = GridPos { x: pos.x - 1, y: pos.y };
 
                 let mut inserted = false;
-                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                for (_, mut station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Former {
-                        if carrying.kind == Some(ItemKind::DoughBatch)
-                            && !station.busy
-                            && !station.has_output
-                        {
-                            if let Some(carried_entity) = carrying.entity {
+                        if let Some((carried_entity, carried_kind)) = carrying.0 {
+                            if carried_kind == ItemKind::DoughBatch
+                                && !station.busy
+                                && !station.has_output
+                            {
                                 commands.entity(carried_entity).despawn();
-                                carrying.entity = None;
-                                carrying.kind = None;
+                                carrying.0 = None;
                                 station.busy = true;
                                 station.timer = 0.0;
                                 inserted = true;
@@ -310,35 +206,15 @@ pub fn npc_ai(
                 let front_pos = GridPos { x: pos.x - 1, y: pos.y };
 
                 let mut collected = false;
-                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                for (_, mut station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Former {
-                        if station.has_output && carrying.entity.is_none() {
-                            let item_entity = commands
-                                .spawn((
-                                    Item {
-                                        kind: station.output_kind,
-                                    },
-                                    SpriteBundle {
-                                        sprite: Sprite {
-                                            color: station.output_kind.color(),
-                                            custom_size: Some(Vec2::new(
-                                                TILE_SIZE * 0.45,
-                                                TILE_SIZE * 0.45,
-                                            )),
-                                            ..default()
-                                        },
-                                        transform: Transform::from_translation(Vec3::new(
-                                            transform.translation.x,
-                                            transform.translation.y,
-                                            0.1,
-                                        )),
-                                        ..default()
-                                    },
-                                    GameEntity,
-                                ))
-                                .id();
-                            carrying.entity = Some(item_entity);
-                            carrying.kind = Some(station.output_kind);
+                        if station.has_output && carrying.0.is_none() {
+                            let item_entity = spawn_item_entity(
+                                &mut commands,
+                                station.output_kind,
+                                Vec3::new(transform.translation.x, transform.translation.y, 0.1),
+                            );
+                            carrying.0 = Some((item_entity, station.output_kind));
                             station.has_output = false;
                             collected = true;
                             npc.state = NpcState::InsertingToOven;
@@ -363,16 +239,15 @@ pub fn npc_ai(
                 };
 
                 let mut inserted = false;
-                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                for (_, mut station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Oven {
-                        if carrying.kind == Some(ItemKind::RawCrustTray)
+                        if carrying.0.map(|(_, k)| k) == Some(ItemKind::RawCrustTray)
                             && !station.busy
                             && !station.has_output
                         {
-                            if let Some(carried_entity) = carrying.entity {
+                            if let Some((carried_entity, _)) = carrying.0 {
                                 commands.entity(carried_entity).despawn();
-                                carrying.entity = None;
-                                carrying.kind = None;
+                                carrying.0 = None;
                                 station.busy = true;
                                 station.timer = 0.0;
                             }
@@ -389,13 +264,7 @@ pub fn npc_ai(
             }
 
             NpcState::ReturningToConveyor => {
-                let target = GridPos { x: 4, y: 4 };
-                try_npc_move(
-                    &mut pos, &mut transform, target,
-                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
-                );
-
-                if pos.x == target.x && pos.y == target.y {
+                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 4, y: 4 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
                     facing.0 = Direction::Left;
                     npc.state = NpcState::WaitingAtConveyor;
                 }
@@ -425,35 +294,15 @@ pub fn npc_ai(
                 let front_pos = GridPos { x: pos.x - 1, y: pos.y };
 
                 let mut collected = false;
-                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                for (_, mut station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Oven {
-                        if station.has_output && carrying.entity.is_none() {
-                            let item_entity = commands
-                                .spawn((
-                                    Item {
-                                        kind: station.output_kind,
-                                    },
-                                    SpriteBundle {
-                                        sprite: Sprite {
-                                            color: station.output_kind.color(),
-                                            custom_size: Some(Vec2::new(
-                                                TILE_SIZE * 0.45,
-                                                TILE_SIZE * 0.45,
-                                            )),
-                                            ..default()
-                                        },
-                                        transform: Transform::from_translation(Vec3::new(
-                                            transform.translation.x,
-                                            transform.translation.y,
-                                            0.1,
-                                        )),
-                                        ..default()
-                                    },
-                                    GameEntity,
-                                ))
-                                .id();
-                            carrying.entity = Some(item_entity);
-                            carrying.kind = Some(station.output_kind);
+                        if station.has_output && carrying.0.is_none() {
+                            let item_entity = spawn_item_entity(
+                                &mut commands,
+                                station.output_kind,
+                                Vec3::new(transform.translation.x, transform.translation.y, 0.1),
+                            );
+                            carrying.0 = Some((item_entity, station.output_kind));
                             station.has_output = false;
                             collected = true;
                             npc.state = NpcState::MovingToPacker;
@@ -468,13 +317,7 @@ pub fn npc_ai(
             }
 
             NpcState::MovingToPacker => {
-                let target = GridPos { x: 8, y: 4 };
-                try_npc_move(
-                    &mut pos, &mut transform, target,
-                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
-                );
-
-                if pos.x == target.x && pos.y == target.y {
+                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 8, y: 4 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
                     npc.state = NpcState::InsertingToPacker;
                 }
             }
@@ -487,16 +330,15 @@ pub fn npc_ai(
                 let front_pos = GridPos { x: pos.x, y: pos.y + 1 };
 
                 let mut inserted = false;
-                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                for (_, mut station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Packer {
-                        if carrying.kind == Some(station.accepted_kind)
+                        if carrying.0.map(|(_, k)| k) == Some(station.accepted_kind)
                             && !station.busy
                             && !station.has_output
                         {
-                            if let Some(carried_entity) = carrying.entity {
+                            if let Some((carried_entity, _)) = carrying.0 {
                                 commands.entity(carried_entity).despawn();
-                                carrying.entity = None;
-                                carrying.kind = None;
+                                carrying.0 = None;
 
                                 station.packer_count += 1;
                                 if station.packer_count >= 3 {
@@ -519,13 +361,7 @@ pub fn npc_ai(
             }
 
             NpcState::ReturningToOvenWait => {
-                let target = GridPos { x: 5, y: 2 };
-                try_npc_move(
-                    &mut pos, &mut transform, target,
-                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
-                );
-
-                if pos.x == target.x && pos.y == target.y {
+                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 5, y: 2 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
                     facing.0 = Direction::Left;
                     npc.state = NpcState::WaitingAtOven;
                 }
@@ -555,35 +391,15 @@ pub fn npc_ai(
                 let front_pos = GridPos { x: pos.x + 1, y: pos.y };
 
                 let mut collected = false;
-                for (_station_entity, mut station, station_pos) in station_query.iter_mut() {
+                for (_, mut station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Packer {
-                        if station.has_output && carrying.entity.is_none() {
-                            let item_entity = commands
-                                .spawn((
-                                    Item {
-                                        kind: station.output_kind,
-                                    },
-                                    SpriteBundle {
-                                        sprite: Sprite {
-                                            color: station.output_kind.color(),
-                                            custom_size: Some(Vec2::new(
-                                                TILE_SIZE * 0.45,
-                                                TILE_SIZE * 0.45,
-                                            )),
-                                            ..default()
-                                        },
-                                        transform: Transform::from_translation(Vec3::new(
-                                            transform.translation.x,
-                                            transform.translation.y,
-                                            0.1,
-                                        )),
-                                        ..default()
-                                    },
-                                    GameEntity,
-                                ))
-                                .id();
-                            carrying.entity = Some(item_entity);
-                            carrying.kind = Some(station.output_kind);
+                        if station.has_output && carrying.0.is_none() {
+                            let item_entity = spawn_item_entity(
+                                &mut commands,
+                                station.output_kind,
+                                Vec3::new(transform.translation.x, transform.translation.y, 0.1),
+                            );
+                            carrying.0 = Some((item_entity, station.output_kind));
                             station.has_output = false;
                             collected = true;
                             npc.state = NpcState::MovingToPalletizer;
@@ -598,13 +414,7 @@ pub fn npc_ai(
             }
 
             NpcState::MovingToPalletizer => {
-                let target = GridPos { x: 7, y: 1 };
-                try_npc_move(
-                    &mut pos, &mut transform, target,
-                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
-                );
-
-                if pos.x == target.x && pos.y == target.y {
+                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 7, y: 1 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
                     npc.state = NpcState::InsertingToPalletizer;
                 }
             }
@@ -617,13 +427,12 @@ pub fn npc_ai(
                 let front_pos = GridPos { x: pos.x - 1, y: pos.y };
 
                 let mut inserted = false;
-                for (_station_entity, station, station_pos) in station_query.iter_mut() {
+                for (_, station, station_pos) in station_query.iter_mut() {
                     if *station_pos == front_pos && station.kind == StationKind::Palletizer {
-                        if carrying.kind == Some(ItemKind::Case) {
-                            if let Some(carried_entity) = carrying.entity {
+                        if carrying.0.map(|(_, k)| k) == Some(ItemKind::Case) {
+                            if let Some((carried_entity, _)) = carrying.0 {
                                 commands.entity(carried_entity).despawn();
-                                carrying.entity = None;
-                                carrying.kind = None;
+                                carrying.0 = None;
                                 shift.cases_completed += 1;
                             }
                             inserted = true;
@@ -639,13 +448,7 @@ pub fn npc_ai(
             }
 
             NpcState::ReturningToPackerWait => {
-                let target = GridPos { x: 7, y: 5 };
-                try_npc_move(
-                    &mut pos, &mut transform, target,
-                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc,
-                );
-
-                if pos.x == target.x && pos.y == target.y {
+                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 7, y: 5 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
                     facing.0 = Direction::Right;
                     npc.state = NpcState::WaitingAtPacker;
                 }
@@ -719,6 +522,20 @@ fn try_npc_move(
     }
 }
 
+fn move_npc_toward(
+    pos: &mut GridPos,
+    transform: &mut Transform,
+    target: GridPos,
+    solid_query: &Query<&GridPos, (With<Solid>, Without<Item>, Without<Npc>)>,
+    station_pos_query: &Query<&GridPos, (With<Station>, Without<Npc>)>,
+    conveyor_pos_query: &Query<&GridPos, (With<ConveyorBelt>, Without<Npc>)>,
+    player_query: &Query<&GridPos, (With<Player>, Without<Npc>)>,
+    npc: &mut Npc,
+) -> bool {
+    try_npc_move(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc);
+    pos.x == target.x && pos.y == target.y
+}
+
 pub fn update_npc_direction_indicator(
     npc_query: Query<(Entity, &Transform, &Facing), (With<Npc>, Without<NpcDirectionIndicator>)>,
     mut indicator_query: Query<(&NpcDirectionIndicator, &mut Transform, &mut Sprite)>,
@@ -729,14 +546,10 @@ pub fn update_npc_direction_indicator(
                 continue;
             }
 
-            let half = TILE_SIZE * 0.35;
-            let bar_half = TILE_SIZE * 0.075;
-            let (offset_x, offset_y, width, height) = match facing.0 {
-                Direction::Up => (0.0, half - bar_half, TILE_SIZE * 0.7, TILE_SIZE * 0.15),
-                Direction::Down => (0.0, -(half - bar_half), TILE_SIZE * 0.7, TILE_SIZE * 0.15),
-                Direction::Left => (-(half - bar_half), 0.0, TILE_SIZE * 0.15, TILE_SIZE * 0.7),
-                Direction::Right => (half - bar_half, 0.0, TILE_SIZE * 0.15, TILE_SIZE * 0.7),
-            };
+            let (offset_x, offset_y, width, height) = facing.0.indicator_offset(
+                TILE_SIZE * 0.35,
+                TILE_SIZE * 0.075,
+            );
             transform.translation = Vec3::new(
                 npc_transform.translation.x + offset_x,
                 npc_transform.translation.y + offset_y,
