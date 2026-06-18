@@ -43,11 +43,10 @@ fn try_station_deposit(
     carrying: &mut Carrying,
     station: &mut Station,
 ) -> bool {
-    let Some((carried_entity, carried_kind)) = carrying.0 else { return false };
+    let Some((_, carried_kind)) = carrying.0 else { return false };
 
     if carried_kind == ItemKind::Case && station.kind == StationKind::Palletizer {
-        commands.entity(carried_entity).despawn();
-        carrying.0 = None;
+        carrying.clear(commands);
         shift.cases_completed += 1;
         return true;
     }
@@ -57,8 +56,7 @@ fn try_station_deposit(
         && !station.busy
         && !station.has_output
     {
-        commands.entity(carried_entity).despawn();
-        carrying.0 = None;
+        carrying.clear(commands);
 
         if station.kind == StationKind::Packer {
             station.packer_count += 1;

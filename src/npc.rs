@@ -91,370 +91,337 @@ pub fn npc_ai(
         npc.move_timer -= dt;
         npc.action_timer -= dt;
 
-        match npc.state {
-            NpcState::WaitingAtConveyor => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
+        npc.state = match npc.state {
+            NpcState::WaitingAtConveyor => handle_waiting_at_conveyor(
+                &mut npc, &mut facing, &item_on_ground_query,
+            ),
+            NpcState::PickingUp => handle_picking_up(
+                &mut npc, &pos, &mut facing, &mut carrying, &item_on_ground_query, &mut commands,
+            ),
+            NpcState::MovingToFormer => handle_movement(
+                &mut pos, &mut transform, &mut facing, &mut npc,
+                GridPos { x: 4, y: 3 }, NpcState::InsertingToFormer, None,
+                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+            ),
+            NpcState::InsertingToFormer => handle_inserting_to_former(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
+            ),
+            NpcState::WaitingForFormer => handle_waiting_for_station(
+                &mut npc, &mut station_query,
+                GridPos { x: 3, y: 3 }, StationKind::Former, NpcState::CollectingFromFormer,
+            ),
+            NpcState::CollectingFromFormer => handle_collect_from_station(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
+                &transform, &mut commands,
+                Direction::Left, (-1, 0), StationKind::Former, NpcState::InsertingToOven,
+            ),
+            NpcState::InsertingToOven => handle_inserting_to_oven(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
+            ),
+            NpcState::ReturningToConveyor => handle_movement(
+                &mut pos, &mut transform, &mut facing, &mut npc,
+                GridPos { x: 4, y: 4 }, NpcState::WaitingAtConveyor, Some(Direction::Left),
+                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+            ),
+            NpcState::WaitingAtOven => handle_waiting_for_station(
+                &mut npc, &mut station_query,
+                GridPos { x: 4, y: 2 }, StationKind::Oven, NpcState::CollectingFromOven,
+            ),
+            NpcState::CollectingFromOven => handle_collect_from_station(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
+                &transform, &mut commands,
+                Direction::Left, (-1, 0), StationKind::Oven, NpcState::MovingToPacker,
+            ),
+            NpcState::MovingToPacker => handle_movement(
+                &mut pos, &mut transform, &mut facing, &mut npc,
+                GridPos { x: 8, y: 4 }, NpcState::InsertingToPacker, None,
+                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+            ),
+            NpcState::InsertingToPacker => handle_inserting_to_packer(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
+            ),
+            NpcState::ReturningToOvenWait => handle_movement(
+                &mut pos, &mut transform, &mut facing, &mut npc,
+                GridPos { x: 5, y: 2 }, NpcState::WaitingAtOven, Some(Direction::Left),
+                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+            ),
+            NpcState::WaitingAtPacker => handle_waiting_for_station(
+                &mut npc, &mut station_query,
+                GridPos { x: 8, y: 5 }, StationKind::Packer, NpcState::CollectingFromPacker,
+            ),
+            NpcState::CollectingFromPacker => handle_collect_from_station(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
+                &transform, &mut commands,
+                Direction::Right, (1, 0), StationKind::Packer, NpcState::MovingToPalletizer,
+            ),
+            NpcState::MovingToPalletizer => handle_movement(
+                &mut pos, &mut transform, &mut facing, &mut npc,
+                GridPos { x: 7, y: 1 }, NpcState::InsertingToPalletizer, None,
+                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+            ),
+            NpcState::InsertingToPalletizer => handle_inserting_to_palletizer(
+                &mut npc, &pos, &mut facing, &mut carrying, &mut shift, &mut station_query, &mut commands,
+            ),
+            NpcState::ReturningToPackerWait => handle_movement(
+                &mut pos, &mut transform, &mut facing, &mut npc,
+                GridPos { x: 7, y: 5 }, NpcState::WaitingAtPacker, Some(Direction::Right),
+                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+            ),
+        }
+        .unwrap_or(npc.state);
+    }
+}
 
-                let conveyor_end = GridPos { x: 3, y: 4 };
-                let has_product = item_on_ground_query
-                    .iter()
-                    .any(|(_, item, ip)| *ip == conveyor_end && item.kind == ItemKind::DoughBatch);
+fn handle_waiting_at_conveyor(
+    npc: &mut Npc,
+    facing: &mut Facing,
+    item_on_ground_query: &Query<(Entity, &Item, &GridPos), (Without<Npc>, Without<Player>)>,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    let has_product = item_on_ground_query
+        .iter()
+        .any(|(_, item, ip)| *ip == GridPos { x: 3, y: 4 } && item.kind == ItemKind::DoughBatch);
+    if has_product {
+        facing.0 = Direction::Left;
+        Some(NpcState::PickingUp)
+    } else {
+        npc.action_timer = npc.action_cooldown;
+        None
+    }
+}
 
-                if has_product {
-                    facing.0 = Direction::Left;
-                    npc.state = NpcState::PickingUp;
-                } else {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::PickingUp => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Left;
-                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
-
-                let mut picked_up = false;
-                if let Some((item_entity, item_kind)) = item_on_ground_query.iter().find_map(|(e, i, ip)| {
-                    if *ip == front_pos && i.kind == ItemKind::DoughBatch {
-                        Some((e, i.kind))
-                    } else {
-                        None
-                    }
-                }) {
-                    if carrying.0.is_none() {
-                        commands.entity(item_entity).remove::<GridPos>();
-                        commands.entity(item_entity).remove::<FloorTimer>();
-                        carrying.0 = Some((item_entity, item_kind));
-                        picked_up = true;
-                    }
-                }
-
-                if picked_up {
-                    npc.state = NpcState::MovingToFormer;
-                } else {
-                    npc.action_timer = npc.action_cooldown;
-                    npc.state = NpcState::WaitingAtConveyor;
-                }
-            }
-
-            NpcState::MovingToFormer => {
-                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 4, y: 3 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
-                    npc.state = NpcState::InsertingToFormer;
-                }
-            }
-
-            NpcState::InsertingToFormer => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Left;
-                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
-
-                let mut inserted = false;
-                for (_, mut station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Former {
-                        if let Some((carried_entity, carried_kind)) = carrying.0 {
-                            if carried_kind == ItemKind::DoughBatch
-                                && !station.busy
-                                && !station.has_output
-                            {
-                                commands.entity(carried_entity).despawn();
-                                carrying.0 = None;
-                                station.busy = true;
-                                station.timer = 0.0;
-                                inserted = true;
-                            }
-                        }
-                        break;
-                    }
-                }
-
-                if inserted {
-                    npc.state = NpcState::WaitingForFormer;
-                } else {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::WaitingForFormer => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
-
-                for (_station_entity, station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Former {
-                        if station.has_output && !station.busy {
-                            npc.state = NpcState::CollectingFromFormer;
-                        }
-                        break;
-                    }
-                }
-
-                npc.action_timer = npc.action_cooldown;
-            }
-
-            NpcState::CollectingFromFormer => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Left;
-                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
-
-                let mut collected = false;
-                for (_, mut station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Former {
-                        if station.has_output && carrying.0.is_none() {
-                            let item_entity = spawn_item_entity(
-                                &mut commands,
-                                station.output_kind,
-                                Vec3::new(transform.translation.x, transform.translation.y, 0.1),
-                            );
-                            carrying.0 = Some((item_entity, station.output_kind));
-                            station.has_output = false;
-                            collected = true;
-                            npc.state = NpcState::InsertingToOven;
-                        }
-                        break;
-                    }
-                }
-
-                if !collected {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::InsertingToOven => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Down;
-                let front_pos = GridPos {
-                    x: pos.x,
-                    y: pos.y - 1,
-                };
-
-                let mut inserted = false;
-                for (_, mut station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Oven {
-                        if carrying.0.map(|(_, k)| k) == Some(ItemKind::RawCrustTray)
-                            && !station.busy
-                            && !station.has_output
-                        {
-                            if let Some((carried_entity, _)) = carrying.0 {
-                                commands.entity(carried_entity).despawn();
-                                carrying.0 = None;
-                                station.busy = true;
-                                station.timer = 0.0;
-                            }
-                            inserted = true;
-                            npc.state = NpcState::ReturningToConveyor;
-                        }
-                        break;
-                    }
-                }
-
-                if !inserted {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::ReturningToConveyor => {
-                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 4, y: 4 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
-                    facing.0 = Direction::Left;
-                    npc.state = NpcState::WaitingAtConveyor;
-                }
-            }
-
-            NpcState::WaitingAtOven => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-
-                let has_output = station_query
-                    .iter()
-                    .any(|(_, s, sp)| *sp == GridPos { x: 4, y: 2 } && s.kind == StationKind::Oven && s.has_output && !s.busy);
-
-                if has_output {
-                    npc.state = NpcState::CollectingFromOven;
-                } else {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::CollectingFromOven => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Left;
-                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
-
-                let mut collected = false;
-                for (_, mut station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Oven {
-                        if station.has_output && carrying.0.is_none() {
-                            let item_entity = spawn_item_entity(
-                                &mut commands,
-                                station.output_kind,
-                                Vec3::new(transform.translation.x, transform.translation.y, 0.1),
-                            );
-                            carrying.0 = Some((item_entity, station.output_kind));
-                            station.has_output = false;
-                            collected = true;
-                            npc.state = NpcState::MovingToPacker;
-                        }
-                        break;
-                    }
-                }
-
-                if !collected {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::MovingToPacker => {
-                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 8, y: 4 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
-                    npc.state = NpcState::InsertingToPacker;
-                }
-            }
-
-            NpcState::InsertingToPacker => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Up;
-                let front_pos = GridPos { x: pos.x, y: pos.y + 1 };
-
-                let mut inserted = false;
-                for (_, mut station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Packer {
-                        if carrying.0.map(|(_, k)| k) == Some(station.accepted_kind)
-                            && !station.busy
-                            && !station.has_output
-                        {
-                            if let Some((carried_entity, _)) = carrying.0 {
-                                commands.entity(carried_entity).despawn();
-                                carrying.0 = None;
-
-                                station.packer_count += 1;
-                                if station.packer_count >= 3 {
-                                    station.busy = true;
-                                    station.timer = 0.0;
-                                    station.packer_count = 0;
-                                }
-                                inserted = true;
-                            }
-                        }
-                        break;
-                    }
-                }
-
-                if inserted {
-                    npc.state = NpcState::ReturningToOvenWait;
-                } else {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::ReturningToOvenWait => {
-                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 5, y: 2 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
-                    facing.0 = Direction::Left;
-                    npc.state = NpcState::WaitingAtOven;
-                }
-            }
-
-            NpcState::WaitingAtPacker => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-
-                let has_output = station_query
-                    .iter()
-                    .any(|(_, s, sp)| *sp == GridPos { x: 8, y: 5 } && s.kind == StationKind::Packer && s.has_output && !s.busy);
-
-                if has_output {
-                    npc.state = NpcState::CollectingFromPacker;
-                } else {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::CollectingFromPacker => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Right;
-                let front_pos = GridPos { x: pos.x + 1, y: pos.y };
-
-                let mut collected = false;
-                for (_, mut station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Packer {
-                        if station.has_output && carrying.0.is_none() {
-                            let item_entity = spawn_item_entity(
-                                &mut commands,
-                                station.output_kind,
-                                Vec3::new(transform.translation.x, transform.translation.y, 0.1),
-                            );
-                            carrying.0 = Some((item_entity, station.output_kind));
-                            station.has_output = false;
-                            collected = true;
-                            npc.state = NpcState::MovingToPalletizer;
-                        }
-                        break;
-                    }
-                }
-
-                if !collected {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::MovingToPalletizer => {
-                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 7, y: 1 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
-                    npc.state = NpcState::InsertingToPalletizer;
-                }
-            }
-
-            NpcState::InsertingToPalletizer => {
-                if npc.action_timer > 0.0 {
-                    continue;
-                }
-                facing.0 = Direction::Left;
-                let front_pos = GridPos { x: pos.x - 1, y: pos.y };
-
-                let mut inserted = false;
-                for (_, station, station_pos) in station_query.iter_mut() {
-                    if *station_pos == front_pos && station.kind == StationKind::Palletizer {
-                        if carrying.0.map(|(_, k)| k) == Some(ItemKind::Case) {
-                            if let Some((carried_entity, _)) = carrying.0 {
-                                commands.entity(carried_entity).despawn();
-                                carrying.0 = None;
-                                shift.cases_completed += 1;
-                            }
-                            inserted = true;
-                            npc.state = NpcState::ReturningToPackerWait;
-                        }
-                        break;
-                    }
-                }
-
-                if !inserted {
-                    npc.action_timer = npc.action_cooldown;
-                }
-            }
-
-            NpcState::ReturningToPackerWait => {
-                if move_npc_toward(&mut pos, &mut transform, GridPos { x: 7, y: 5 }, &solid_query, &station_pos_query, &conveyor_pos_query, &player_query, &mut npc) {
-                    facing.0 = Direction::Right;
-                    npc.state = NpcState::WaitingAtPacker;
-                }
+fn handle_picking_up(
+    npc: &mut Npc,
+    pos: &GridPos,
+    facing: &mut Facing,
+    carrying: &mut Carrying,
+    item_on_ground_query: &Query<(Entity, &Item, &GridPos), (Without<Npc>, Without<Player>)>,
+    commands: &mut Commands,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    facing.0 = Direction::Left;
+    let front_pos = GridPos { x: pos.x - 1, y: pos.y };
+    for (item_entity, item, ip) in item_on_ground_query.iter() {
+        if *ip == front_pos && item.kind == ItemKind::DoughBatch {
+            if carrying.0.is_none() {
+                commands.entity(item_entity).remove::<GridPos>();
+                commands.entity(item_entity).remove::<FloorTimer>();
+                carrying.0 = Some((item_entity, item.kind));
+                return Some(NpcState::MovingToFormer);
             }
         }
     }
+    npc.action_timer = npc.action_cooldown;
+    Some(NpcState::WaitingAtConveyor)
+}
+
+fn handle_movement(
+    pos: &mut GridPos,
+    transform: &mut Transform,
+    facing: &mut Facing,
+    npc: &mut Npc,
+    target: GridPos,
+    on_arrival: NpcState,
+    arrival_facing: Option<Direction>,
+    solid_query: &Query<&GridPos, (With<Solid>, Without<Item>, Without<Npc>)>,
+    station_pos_query: &Query<&GridPos, (With<Station>, Without<Npc>)>,
+    conveyor_pos_query: &Query<&GridPos, (With<ConveyorBelt>, Without<Npc>)>,
+    player_query: &Query<&GridPos, (With<Player>, Without<Npc>)>,
+) -> Option<NpcState> {
+    if move_npc_toward(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc) {
+        if let Some(dir) = arrival_facing {
+            facing.0 = dir;
+        }
+        Some(on_arrival)
+    } else {
+        None
+    }
+}
+
+fn handle_inserting_to_former(
+    npc: &mut Npc,
+    pos: &GridPos,
+    facing: &mut Facing,
+    carrying: &mut Carrying,
+    station_query: &mut Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
+    commands: &mut Commands,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    facing.0 = Direction::Left;
+    let front_pos = GridPos { x: pos.x - 1, y: pos.y };
+    for (_, mut station, station_pos) in station_query.iter_mut() {
+        if *station_pos == front_pos && station.kind == StationKind::Former {
+            if let Some((_, carried_kind)) = &carrying.0 {
+                if *carried_kind == ItemKind::DoughBatch && !station.busy && !station.has_output {
+                    carrying.clear(commands);
+                    station.busy = true;
+                    station.timer = 0.0;
+                    return Some(NpcState::WaitingForFormer);
+                }
+            }
+            break;
+        }
+    }
+    npc.action_timer = npc.action_cooldown;
+    None
+}
+
+fn handle_waiting_for_station(
+    npc: &mut Npc,
+    station_query: &mut Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
+    target_pos: GridPos,
+    kind: StationKind,
+    next_state: NpcState,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    npc.action_timer = npc.action_cooldown;
+    if station_query
+        .iter()
+        .any(|(_, s, sp)| *sp == target_pos && s.kind == kind && s.has_output && !s.busy)
+    {
+        Some(next_state)
+    } else {
+        None
+    }
+}
+
+fn handle_collect_from_station(
+    npc: &mut Npc,
+    pos: &GridPos,
+    facing: &mut Facing,
+    carrying: &mut Carrying,
+    station_query: &mut Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
+    transform: &Transform,
+    commands: &mut Commands,
+    facing_dir: Direction,
+    front_delta: (i32, i32),
+    expected_kind: StationKind,
+    next_state: NpcState,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    facing.0 = facing_dir;
+    let front_pos = GridPos { x: pos.x + front_delta.0, y: pos.y + front_delta.1 };
+    for (_, mut station, station_pos) in station_query.iter_mut() {
+        if *station_pos == front_pos && station.kind == expected_kind {
+            if station.has_output && carrying.0.is_none() {
+                let item_entity = spawn_item_entity(
+                    commands,
+                    station.output_kind,
+                    Vec3::new(transform.translation.x, transform.translation.y, 0.1),
+                );
+                carrying.0 = Some((item_entity, station.output_kind));
+                station.has_output = false;
+                return Some(next_state);
+            }
+            break;
+        }
+    }
+    npc.action_timer = npc.action_cooldown;
+    None
+}
+
+fn handle_inserting_to_oven(
+    npc: &mut Npc,
+    pos: &GridPos,
+    facing: &mut Facing,
+    carrying: &mut Carrying,
+    station_query: &mut Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
+    commands: &mut Commands,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    facing.0 = Direction::Down;
+    let front_pos = GridPos { x: pos.x, y: pos.y - 1 };
+    for (_, mut station, station_pos) in station_query.iter_mut() {
+        if *station_pos == front_pos && station.kind == StationKind::Oven {
+            if carrying.0.as_ref().map(|(_, k)| *k) == Some(ItemKind::RawCrustTray)
+                && !station.busy
+                && !station.has_output
+            {
+                carrying.clear(commands);
+                station.busy = true;
+                station.timer = 0.0;
+                return Some(NpcState::ReturningToConveyor);
+            }
+            break;
+        }
+    }
+    npc.action_timer = npc.action_cooldown;
+    None
+}
+
+fn handle_inserting_to_packer(
+    npc: &mut Npc,
+    pos: &GridPos,
+    facing: &mut Facing,
+    carrying: &mut Carrying,
+    station_query: &mut Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
+    commands: &mut Commands,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    facing.0 = Direction::Up;
+    let front_pos = GridPos { x: pos.x, y: pos.y + 1 };
+    for (_, mut station, station_pos) in station_query.iter_mut() {
+        if *station_pos == front_pos && station.kind == StationKind::Packer {
+            if carrying.0.as_ref().map(|(_, k)| *k) == Some(station.accepted_kind)
+                && !station.busy
+                && !station.has_output
+            {
+                carrying.clear(commands);
+                station.packer_count += 1;
+                if station.packer_count >= 3 {
+                    station.busy = true;
+                    station.timer = 0.0;
+                    station.packer_count = 0;
+                }
+                return Some(NpcState::ReturningToOvenWait);
+            }
+            break;
+        }
+    }
+    npc.action_timer = npc.action_cooldown;
+    None
+}
+
+fn handle_inserting_to_palletizer(
+    npc: &mut Npc,
+    pos: &GridPos,
+    facing: &mut Facing,
+    carrying: &mut Carrying,
+    shift: &mut ShiftState,
+    station_query: &mut Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
+    commands: &mut Commands,
+) -> Option<NpcState> {
+    if npc.action_timer > 0.0 {
+        return None;
+    }
+    facing.0 = Direction::Left;
+    let front_pos = GridPos { x: pos.x - 1, y: pos.y };
+    for (_, station, station_pos) in station_query.iter_mut() {
+        if *station_pos == front_pos && station.kind == StationKind::Palletizer {
+            if carrying.0.as_ref().map(|(_, k)| *k) == Some(ItemKind::Case) {
+                carrying.clear(commands);
+                shift.cases_completed += 1;
+                return Some(NpcState::ReturningToPackerWait);
+            }
+            break;
+        }
+    }
+    npc.action_timer = npc.action_cooldown;
+    None
 }
 
 fn is_tile_blocked_for_npc(

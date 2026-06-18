@@ -130,17 +130,6 @@ pub fn update_station_visuals(
     }
 }
 
-#[allow(dead_code)]
-fn station_output_ready(
-    station_query: &Query<(Entity, &Station, &GridPos)>,
-    pos: GridPos,
-    kind: StationKind,
-) -> bool {
-    station_query
-        .iter()
-        .any(|(_, s, sp)| *sp == pos && s.kind == kind && s.has_output && !s.busy)
-}
-
 pub fn animate_conveyors(
     time: Res<Time>,
     mut arrow_query: Query<(&mut Transform, &ConveyorArrow)>,

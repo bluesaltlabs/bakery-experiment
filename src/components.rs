@@ -50,6 +50,12 @@ impl Carrying {
     pub fn empty() -> Self {
         Carrying(None)
     }
+
+    pub fn clear(&mut self, commands: &mut Commands) {
+        if let Some((entity, _)) = self.0.take() {
+            commands.entity(entity).despawn();
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
