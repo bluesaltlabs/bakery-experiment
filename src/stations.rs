@@ -106,6 +106,8 @@ pub fn update_station_labels(
                     station.packer_count,
                     station.inputs_needed,
                 );
+            } else if station.kind == StationKind::Table && station.has_output {
+                text.sections[0].value = station.output_kind.label().to_string();
             } else {
                 text.sections[0].value = station.kind.label();
             }

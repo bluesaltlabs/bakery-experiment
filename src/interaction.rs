@@ -25,15 +25,18 @@ fn try_table_interaction(
     commands: &mut Commands,
     carrying: &mut Carrying,
     front_pos: GridPos,
-    table_query: &Query<(Entity, &Station, &GridPos), (With<TableMarker>, Without<Player>)>,
+    table_query: &mut Query<(Entity, &mut Station, &GridPos), (With<TableMarker>, Without<Player>)>,
 ) -> bool {
-    if !table_query.iter().any(|(_, _, tp)| *tp == front_pos) {
-        return false;
-    }
-    if let Some((carried_entity, _)) = carrying.0 {
-        commands.entity(carried_entity).insert(front_pos);
-        carrying.0 = None;
-        return true;
+    for (_, mut station, tp) in table_query.iter_mut() {
+        if *tp == front_pos {
+            if let Some((carried_entity, carried_kind)) = carrying.0 {
+                commands.entity(carried_entity).insert(front_pos);
+                station.has_output = true;
+                station.output_kind = carried_kind;
+                carrying.0 = None;
+                return true;
+            }
+        }
     }
     false
 }
@@ -99,6 +102,7 @@ fn try_ground_pickup(
     carrying: &mut Carrying,
     front_pos: GridPos,
     item_on_ground_query: &Query<(Entity, &Item, &GridPos)>,
+    table_query: &mut Query<(Entity, &mut Station, &GridPos), (With<TableMarker>, Without<Player>)>,
 ) -> bool {
     if carrying.0.is_some() {
         return false;
@@ -108,6 +112,11 @@ fn try_ground_pickup(
             commands.entity(item_entity).remove::<GridPos>();
             commands.entity(item_entity).remove::<FloorTimer>();
             carrying.0 = Some((item_entity, item.kind));
+            for (_, mut station, tp) in table_query.iter_mut() {
+                if *tp == front_pos {
+                    station.has_output = false;
+                }
+            }
             return true;
         }
     }
@@ -142,7 +151,7 @@ pub fn player_interaction(
     mut shift: ResMut<ShiftState>,
     mut player_query: Query<(&GridPos, &Facing, &mut Carrying, &Transform), With<Player>>,
     mut station_query: Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Player>)>,
-    table_query: Query<(Entity, &Station, &GridPos), (With<TableMarker>, Without<Player>)>,
+    mut table_query: Query<(Entity, &mut Station, &GridPos), (With<TableMarker>, Without<Player>)>,
     item_on_ground_query: Query<(Entity, &Item, &GridPos)>,
     solid_query: Query<&GridPos, (With<Solid>, Without<Player>)>,
     conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
@@ -163,7 +172,7 @@ pub fn player_interaction(
         y: player_pos.y + delta.1,
     };
 
-    if try_table_interaction(&mut commands, &mut carrying, front_pos, &table_query) {
+    if try_table_interaction(&mut commands, &mut carrying, front_pos, &mut table_query) {
         audio_queue.0.push(AudioEvent::Drop);
         return;
     }
@@ -183,7 +192,7 @@ pub fn player_interaction(
         return;
     }
 
-    if try_ground_pickup(&mut commands, &mut carrying, front_pos, &item_on_ground_query) {
+    if try_ground_pickup(&mut commands, &mut carrying, front_pos, &item_on_ground_query, &mut table_query) {
         audio_queue.0.push(AudioEvent::Pickup);
         return;
     }
