@@ -13,7 +13,7 @@
 <script type="module">
   async function start() {
     if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
-      await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.register('sw.js');
       await new Promise((resolve) => {
         navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
       });
