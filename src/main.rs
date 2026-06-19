@@ -14,8 +14,6 @@ mod ui;
 use std::time::Duration;
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
-use bevy::audio::AudioPlugin;
-#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use components::{Direction, GridPos};
 use resources::ConveyorTimerResource;
@@ -28,26 +26,27 @@ fn make_window() -> Window {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-fn main() {
+fn build_app() -> App {
     let mut app = App::new();
-
-    #[cfg(target_arch = "wasm32")]
-    app.add_plugins(
-        DefaultPlugins
-            .set(WindowPlugin {
-                primary_window: Some(make_window()),
-                ..default()
-            })
-            .build()
-            .disable::<AudioPlugin>(),
-    );
-
-    #[cfg(not(target_arch = "wasm32"))]
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+    let window = WindowPlugin {
         primary_window: Some(make_window()),
         ..default()
-    }));
+    };
+
+    #[cfg(target_arch = "wasm32")] {
+        use bevy::audio::AudioPlugin;
+        app.add_plugins(DefaultPlugins.set(window).build().disable::<AudioPlugin>());
+    }
+    #[cfg(not(target_arch = "wasm32"))] {
+        app.add_plugins(DefaultPlugins.set(window));
+    }
+
+    app
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
+fn main() {
+    let mut app = build_app();
 
     audio::setup_audio_system(&mut app);
 

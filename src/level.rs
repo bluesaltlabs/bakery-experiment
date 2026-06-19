@@ -194,15 +194,15 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
 }
 
 fn spawn_conveyor(commands: &mut Commands, pos: GridPos, direction: crate::components::Direction) {
-    use crate::components::Direction;
+    use crate::components::Direction as LocalDir;
     let world_pos = grid_to_world(pos);
     let half = TILE_SIZE * 0.4;
     let bar_half = TILE_SIZE * 0.08;
     let (offset_x, offset_y, width, height) = match direction {
-        Direction::Up => (0.0, half - bar_half, TILE_SIZE * 0.6, TILE_SIZE * 0.16),
-        Direction::Down => (0.0, -(half - bar_half), TILE_SIZE * 0.6, TILE_SIZE * 0.16),
-        Direction::Left => (-(half - bar_half), 0.0, TILE_SIZE * 0.16, TILE_SIZE * 0.6),
-        Direction::Right => (half - bar_half, 0.0, TILE_SIZE * 0.16, TILE_SIZE * 0.6),
+        LocalDir::Up => (0.0, half - bar_half, TILE_SIZE * 0.6, TILE_SIZE * 0.16),
+        LocalDir::Down => (0.0, -(half - bar_half), TILE_SIZE * 0.6, TILE_SIZE * 0.16),
+        LocalDir::Left => (-(half - bar_half), 0.0, TILE_SIZE * 0.16, TILE_SIZE * 0.6),
+        LocalDir::Right => (half - bar_half, 0.0, TILE_SIZE * 0.16, TILE_SIZE * 0.6),
     };
 
     commands.spawn((

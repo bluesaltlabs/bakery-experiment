@@ -206,21 +206,6 @@ pub enum ConveyorLoaderState {
     ReturningToConveyor,
 }
 
-impl ConveyorLoaderState {
-    pub fn label(&self) -> &str {
-        match self {
-            ConveyorLoaderState::WaitingAtConveyor => "WaitingAtConveyor",
-            ConveyorLoaderState::PickingUp => "PickingUp",
-            ConveyorLoaderState::MovingToFormer => "MovingToFormer",
-            ConveyorLoaderState::InsertingToFormer => "InsertingToFormer",
-            ConveyorLoaderState::WaitingForFormer => "WaitingForFormer",
-            ConveyorLoaderState::CollectingFromFormer => "CollectingFromFormer",
-            ConveyorLoaderState::InsertingToOven => "InsertingToOven",
-            ConveyorLoaderState::ReturningToConveyor => "ReturningToConveyor",
-        }
-    }
-}
-
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum OvenHaulerState {
     WaitingAtOven,
@@ -230,18 +215,6 @@ pub enum OvenHaulerState {
     ReturningToOvenWait,
 }
 
-impl OvenHaulerState {
-    pub fn label(&self) -> &str {
-        match self {
-            OvenHaulerState::WaitingAtOven => "WaitingAtOven",
-            OvenHaulerState::CollectingFromOven => "CollectingFromOven",
-            OvenHaulerState::MovingToPacker => "MovingToPacker",
-            OvenHaulerState::InsertingToPacker => "InsertingToPacker",
-            OvenHaulerState::ReturningToOvenWait => "ReturningToOvenWait",
-        }
-    }
-}
-
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PackerHaulerState {
     WaitingAtPacker,
@@ -249,18 +222,6 @@ pub enum PackerHaulerState {
     MovingToPalletizer,
     InsertingToPalletizer,
     ReturningToPackerWait,
-}
-
-impl PackerHaulerState {
-    pub fn label(&self) -> &str {
-        match self {
-            PackerHaulerState::WaitingAtPacker => "WaitingAtPacker",
-            PackerHaulerState::CollectingFromPacker => "CollectingFromPacker",
-            PackerHaulerState::MovingToPalletizer => "MovingToPalletizer",
-            PackerHaulerState::InsertingToPalletizer => "InsertingToPalletizer",
-            PackerHaulerState::ReturningToPackerWait => "ReturningToPackerWait",
-        }
-    }
 }
 
 
