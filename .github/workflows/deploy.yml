@@ -18,6 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Debug after checkout
+        run: |
+          echo "=== workspace ==="
+          ls -la
+          echo "=== web/ ==="
+          ls -la web/ 2>/dev/null || echo "web/ does not exist"
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -28,12 +34,18 @@ jobs:
         run: sudo apt-get install -y binaryen
       - name: Build WASM
         run: ./wasm-build.sh
+      - name: Debug after build
+        run: |
+          echo "=== web/ after build ==="
+          ls -la web/
       - name: Prepare deploy directory
         run: |
           mkdir -p dist
           cp index.html dist/
           cp sw.js dist/
           cp -r web dist/web
+          echo "=== dist/ ==="
+          ls -laR dist/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
