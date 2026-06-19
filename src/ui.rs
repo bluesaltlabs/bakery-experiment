@@ -57,9 +57,9 @@ pub fn handle_restart(
     grid_visible.0 = true;
     setup_level(&mut commands);
     crate::player::spawn_player(&mut commands);
-    npc::spawn_npc(&mut commands, GridPos { x: 4, y: 4 }, Color::srgb(1.0, 0.5, 0.0), Color::srgb(1.0, 0.7, 0.3), crate::components::Direction::Left, crate::components::NpcState::WaitingAtConveyor, 1.0, 0.5);
-    npc::spawn_npc(&mut commands, GridPos { x: 5, y: 2 }, Color::srgb(0.2, 0.8, 0.5), Color::srgb(0.4, 1.0, 0.6), crate::components::Direction::Left, crate::components::NpcState::WaitingAtOven, 0.5, 0.25);
-    npc::spawn_npc(&mut commands, GridPos { x: 7, y: 5 }, Color::srgb(0.3, 0.5, 0.9), Color::srgb(0.5, 0.7, 1.0), crate::components::Direction::Right, crate::components::NpcState::WaitingAtPacker, 0.5, 0.25);
+    npc::spawn_conveyor_loader(&mut commands, GridPos { x: 4, y: 4 }, Color::srgb(1.0, 0.5, 0.0), Color::srgb(1.0, 0.7, 0.3), crate::components::Direction::Left, 1.0, 0.5);
+    npc::spawn_oven_hauler(&mut commands, GridPos { x: 5, y: 2 }, Color::srgb(0.2, 0.8, 0.5), Color::srgb(0.4, 1.0, 0.6), crate::components::Direction::Left, 0.5, 0.25);
+    npc::spawn_packer_hauler(&mut commands, GridPos { x: 7, y: 5 }, Color::srgb(0.3, 0.5, 0.9), Color::srgb(0.5, 0.7, 1.0), crate::components::Direction::Right, 0.5, 0.25);
     setup_ui(&mut commands);
 }
 

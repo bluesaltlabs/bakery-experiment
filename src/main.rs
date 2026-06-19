@@ -17,7 +17,7 @@ use bevy::prelude::*;
 use bevy::audio::AudioPlugin;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use components::{Direction, GridPos, NpcState};
+use components::{Direction, GridPos};
 use resources::ConveyorTimerResource;
 
 fn make_window() -> Window {
@@ -70,7 +70,14 @@ fn main() {
                 stations::process_conveyors,
                 stations::animate_conveyors,
                 interaction::player_interaction,
-                npc::npc_ai,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                npc::conveyor_loader::conveyor_loader_ai,
+                npc::oven_hauler::oven_hauler_ai,
+                npc::packer_hauler::packer_hauler_ai,
                 npc::update_npc_direction_indicator,
                 interaction::update_carried_items,
                 stations::process_stations,
@@ -111,33 +118,30 @@ fn spawn_player_sys(mut commands: Commands) {
 
 fn spawn_npc_sys(mut commands: Commands) {
     use bevy::color::Color;
-    crate::npc::spawn_npc(
+    crate::npc::spawn_conveyor_loader(
         &mut commands,
         GridPos { x: 4, y: 4 },
         Color::srgb(1.0, 0.5, 0.0),
         Color::srgb(1.0, 0.7, 0.3),
         Direction::Left,
-        NpcState::WaitingAtConveyor,
         1.0,
         0.5,
     );
-    crate::npc::spawn_npc(
+    crate::npc::spawn_oven_hauler(
         &mut commands,
         GridPos { x: 5, y: 2 },
         Color::srgb(0.2, 0.8, 0.5),
         Color::srgb(0.4, 1.0, 0.6),
         Direction::Left,
-        NpcState::WaitingAtOven,
         0.5,
         0.25,
     );
-    crate::npc::spawn_npc(
+    crate::npc::spawn_packer_hauler(
         &mut commands,
         GridPos { x: 7, y: 5 },
         Color::srgb(0.3, 0.5, 0.9),
         Color::srgb(0.5, 0.7, 1.0),
         Direction::Right,
-        NpcState::WaitingAtPacker,
         0.5,
         0.25,
     );

@@ -188,15 +188,14 @@ pub struct ConveyorArrow {
 
 #[derive(Component)]
 pub struct Npc {
-    pub state: NpcState,
     pub move_timer: f32,
     pub action_timer: f32,
     pub move_cooldown: f32,
     pub action_cooldown: f32,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum NpcState {
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ConveyorLoaderState {
     WaitingAtConveyor,
     PickingUp,
     MovingToFormer,
@@ -205,14 +204,63 @@ pub enum NpcState {
     CollectingFromFormer,
     InsertingToOven,
     ReturningToConveyor,
+}
+
+impl ConveyorLoaderState {
+    pub fn label(&self) -> &str {
+        match self {
+            ConveyorLoaderState::WaitingAtConveyor => "WaitingAtConveyor",
+            ConveyorLoaderState::PickingUp => "PickingUp",
+            ConveyorLoaderState::MovingToFormer => "MovingToFormer",
+            ConveyorLoaderState::InsertingToFormer => "InsertingToFormer",
+            ConveyorLoaderState::WaitingForFormer => "WaitingForFormer",
+            ConveyorLoaderState::CollectingFromFormer => "CollectingFromFormer",
+            ConveyorLoaderState::InsertingToOven => "InsertingToOven",
+            ConveyorLoaderState::ReturningToConveyor => "ReturningToConveyor",
+        }
+    }
+}
+
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OvenHaulerState {
     WaitingAtOven,
     CollectingFromOven,
     MovingToPacker,
     InsertingToPacker,
     ReturningToOvenWait,
+}
+
+impl OvenHaulerState {
+    pub fn label(&self) -> &str {
+        match self {
+            OvenHaulerState::WaitingAtOven => "WaitingAtOven",
+            OvenHaulerState::CollectingFromOven => "CollectingFromOven",
+            OvenHaulerState::MovingToPacker => "MovingToPacker",
+            OvenHaulerState::InsertingToPacker => "InsertingToPacker",
+            OvenHaulerState::ReturningToOvenWait => "ReturningToOvenWait",
+        }
+    }
+}
+
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum PackerHaulerState {
     WaitingAtPacker,
     CollectingFromPacker,
     MovingToPalletizer,
     InsertingToPalletizer,
     ReturningToPackerWait,
 }
+
+impl PackerHaulerState {
+    pub fn label(&self) -> &str {
+        match self {
+            PackerHaulerState::WaitingAtPacker => "WaitingAtPacker",
+            PackerHaulerState::CollectingFromPacker => "CollectingFromPacker",
+            PackerHaulerState::MovingToPalletizer => "MovingToPalletizer",
+            PackerHaulerState::InsertingToPalletizer => "InsertingToPalletizer",
+            PackerHaulerState::ReturningToPackerWait => "ReturningToPackerWait",
+        }
+    }
+}
+
+
