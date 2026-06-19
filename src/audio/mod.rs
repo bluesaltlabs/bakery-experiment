@@ -5,7 +5,7 @@ pub struct UserVolume(pub f32);
 
 impl Default for UserVolume {
     fn default() -> Self {
-        Self(0.8)
+        Self(0.25)
     }
 }
 

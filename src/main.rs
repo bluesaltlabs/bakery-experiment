@@ -15,7 +15,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use components::{Direction, GridPos};
+use components::{Direction, GridPos, Player};
 use resources::ConveyorTimerResource;
 
 fn make_window() -> Window {
@@ -66,6 +66,7 @@ fn main() {
             Update,
             (
                 movement::player_movement,
+                camera_follow.after(movement::player_movement),
                 stations::process_conveyors,
                 stations::animate_conveyors,
                 interaction::player_interaction,
@@ -105,6 +106,39 @@ fn setup_camera(mut commands: Commands) {
         )),
         ..default()
     });
+}
+
+fn camera_follow(
+    player_query: Query<&Transform, With<Player>>,
+    mut camera_query: Query<&mut Transform, (With<Camera>, Without<Player>)>,
+    window_query: Query<&Window>,
+    time: Res<Time>,
+) {
+    let Ok(player) = player_query.get_single() else { return };
+    let Ok(mut camera) = camera_query.get_single_mut() else { return };
+    let Ok(window) = window_query.get_single() else { return };
+
+    let dead_zone_half = 9.0 * level::TILE_SIZE / 2.0;
+
+    let offset = player.translation.truncate() - camera.translation.truncate();
+
+    let excess = Vec2::new(
+        (offset.x.abs() - dead_zone_half).max(0.0) * offset.x.signum(),
+        (offset.y.abs() - dead_zone_half).max(0.0) * offset.y.signum(),
+    );
+
+    let mut target = camera.translation.truncate() + excess;
+
+    let half_w = window.width() / 2.0;
+    let half_h = window.height() / 2.0;
+    let map_w = level::MAP_WIDTH as f32 * level::TILE_SIZE;
+    let map_h = level::MAP_HEIGHT as f32 * level::TILE_SIZE;
+    target.x = target.x.clamp(half_w, map_w - half_w);
+    target.y = target.y.clamp(half_h, map_h - half_h);
+
+    let t = (8.0 * time.delta_seconds()).clamp(0.0, 1.0);
+    camera.translation.x += (target.x - camera.translation.x) * t;
+    camera.translation.y += (target.y - camera.translation.y) * t;
 }
 
 fn setup_level_sys(mut commands: Commands) {

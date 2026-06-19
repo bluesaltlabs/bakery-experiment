@@ -91,7 +91,7 @@ pub fn setup_ui(commands: &mut Commands) {
                 },
             ),
             TextSection::new(
-                "\nVolume: 80%",
+                "\nVolume: 25%",
                 TextStyle {
                     font_size: 14.0,
                     color: Color::srgb(0.6, 0.6, 0.9),
