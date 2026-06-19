@@ -18,12 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Debug after checkout
-        run: |
-          echo "=== workspace ==="
-          ls -la
-          echo "=== web/ ==="
-          ls -la web/ 2>/dev/null || echo "web/ does not exist"
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -34,18 +28,42 @@ jobs:
         run: sudo apt-get install -y binaryen
       - name: Build WASM
         run: ./wasm-build.sh
-      - name: Debug after build
+      - name: Patch table init for non-SW COOP fallback
         run: |
-          echo "=== web/ after build ==="
-          ls -la web/
+          python3 -c "
+          import re
+          with open('web/bakery-experiment.js') as f:
+              c = f.read()
+          old = '''        __wbindgen_init_externref_table: function() {
+            const table = wasm.__wbindgen_externrefs;
+            const offset = table.grow(4);
+            table.set(0, undefined);
+            table.set(offset + 0, undefined);
+            table.set(offset + 1, null);
+            table.set(offset + 2, true);
+            table.set(offset + 3, false);
+        },'''
+          new = '''        __wbindgen_init_externref_table: function() {
+            const table = wasm.__wbindgen_externrefs;
+            let offset;
+            try { offset = table.grow(4); } catch (e) { offset = table.length - 4; }
+            table.set(0, undefined);
+            table.set(offset + 0, undefined);
+            table.set(offset + 1, null);
+            table.set(offset + 2, true);
+            table.set(offset + 3, false);
+        },'''
+          c = c.replace(old, new)
+          with open('web/bakery-experiment.js', 'w') as f:
+              f.write(c)
+          print('patched __wbindgen_init_externref_table')
+          "
       - name: Prepare deploy directory
         run: |
           mkdir -p dist
           cp index.html dist/
           cp sw.js dist/
           cp -r web dist/web
-          echo "=== dist/ ==="
-          ls -laR dist/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
