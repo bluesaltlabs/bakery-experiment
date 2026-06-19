@@ -34,6 +34,18 @@ pub struct MobileHideButton;
 #[derive(Component)]
 pub struct MobileShowButton;
 
+#[derive(Component)]
+pub struct MobileUpButton;
+
+#[derive(Component)]
+pub struct MobileDownButton;
+
+#[derive(Component)]
+pub struct MobileLeftButton;
+
+#[derive(Component)]
+pub struct MobileRightButton;
+
 pub fn handle_tap_to_move(
     touches: Res<Touches>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -109,6 +121,10 @@ pub fn handle_overlay_buttons(
     interact_query: Query<&Interaction, (With<MobileInteractButton>, Changed<Interaction>)>,
     restart_query: Query<&Interaction, (With<MobileRestartButton>, Changed<Interaction>)>,
     grid_query: Query<&Interaction, (With<MobileGridButton>, Changed<Interaction>)>,
+    up_query: Query<&Interaction, With<MobileUpButton>>,
+    down_query: Query<&Interaction, With<MobileDownButton>>,
+    left_query: Query<&Interaction, With<MobileLeftButton>>,
+    right_query: Query<&Interaction, With<MobileRightButton>>,
     mut mobile_input: ResMut<MobileInput>,
 ) {
     if interact_query.iter().any(|i| *i == Interaction::Pressed) {
@@ -119,6 +135,18 @@ pub fn handle_overlay_buttons(
     }
     if grid_query.iter().any(|i| *i == Interaction::Pressed) {
         mobile_input.toggle_grid = true;
+    }
+
+    let up = up_query.iter().any(|i| *i == Interaction::Pressed);
+    let down = down_query.iter().any(|i| *i == Interaction::Pressed);
+    let left = left_query.iter().any(|i| *i == Interaction::Pressed);
+    let right = right_query.iter().any(|i| *i == Interaction::Pressed);
+
+    if up || down || left || right {
+        mobile_input.direction = if up { Some(Direction::Up) }
+            else if down { Some(Direction::Down) }
+            else if left { Some(Direction::Left) }
+            else { Some(Direction::Right) };
     }
 }
 
@@ -147,6 +175,26 @@ pub fn handle_overlay_toggle(
         if let Ok(mut vis) = show_button_query.get_single_mut() {
             *vis = if overlay_visible.0 { Visibility::Hidden } else { Visibility::Visible };
         }
+    }
+}
+
+fn arrow_style() -> Style {
+    Style {
+        width: Val::Px(60.0),
+        height: Val::Px(36.0),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..default()
+    }
+}
+
+fn half_arrow_style() -> Style {
+    Style {
+        width: Val::Px(30.0),
+        height: Val::Px(36.0),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..default()
     }
 }
 
@@ -193,6 +241,94 @@ pub fn setup_mobile_overlay(mut commands: Commands) {
         MobileOverlayRoot,
     ))
     .with_children(|parent| {
+        parent.spawn((
+            ButtonBundle {
+                style: arrow_style(),
+                background_color: bg(),
+                ..default()
+            },
+            MobileUpButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "^",
+                TextStyle {
+                    font_size: 18.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
+
+        parent.spawn(NodeBundle {
+            style: Style {
+                width: Val::Px(60.0),
+                height: Val::Px(36.0),
+                flex_direction: FlexDirection::Row,
+                ..default()
+            },
+            background_color: BackgroundColor(Color::NONE),
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn((
+                ButtonBundle {
+                    style: half_arrow_style(),
+                    background_color: bg(),
+                    ..default()
+                },
+                MobileLeftButton,
+            ))
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    "<",
+                    TextStyle {
+                        font_size: 18.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                ));
+            });
+
+            parent.spawn((
+                ButtonBundle {
+                    style: half_arrow_style(),
+                    background_color: bg(),
+                    ..default()
+                },
+                MobileRightButton,
+            ))
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    ">",
+                    TextStyle {
+                        font_size: 18.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                ));
+            });
+        });
+
+        parent.spawn((
+            ButtonBundle {
+                style: arrow_style(),
+                background_color: bg(),
+                ..default()
+            },
+            MobileDownButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "v",
+                TextStyle {
+                    font_size: 18.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
+
         parent.spawn((
             ButtonBundle {
                 style: button_style(),
