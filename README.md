@@ -99,3 +99,23 @@ The bakery floor is a 12×10 tile grid with walls (grey), floor (light grey), an
 - Sound effects and music
 - Station jams and blocked outputs
 - Shift report / score screen
+
+
+## Build
+
+To build for WASM, run:
+
+```bash
+./wasm-build.sh
+python -m http.server 8081 -d web
+```
+
+
+Otherwise just run:
+
+```bash
+cargo run
+```
+
+
+---
