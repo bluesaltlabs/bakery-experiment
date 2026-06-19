@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use crate::components::*;
+use crate::mobile::MobileInput;
 use crate::resources::GridVisible;
 
 pub const TILE_SIZE: f32 = 64.0;
@@ -301,10 +302,13 @@ pub fn spawn_item_entity(commands: &mut Commands, kind: ItemKind, position: Vec3
 
 pub fn toggle_grid(
     keys: Res<ButtonInput<KeyCode>>,
+    mut mobile_input: ResMut<MobileInput>,
     mut grid_visible: ResMut<GridVisible>,
     mut query: Query<&mut Visibility, With<GridLine>>,
 ) {
-    if !keys.just_pressed(KeyCode::KeyG) {
+    let toggle = keys.just_pressed(KeyCode::KeyG) || mobile_input.toggle_grid;
+    mobile_input.toggle_grid = false;
+    if !toggle {
         return;
     }
 

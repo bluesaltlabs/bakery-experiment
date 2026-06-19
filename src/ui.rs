@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 use crate::audio::{AudioEvent, UserVolume};
 use crate::components::*;
-use crate::resources::{GridVisible, ShiftState};
 use crate::level::*;
+use crate::mobile::MobileInput;
 use crate::npc;
+use crate::resources::{GridVisible, ShiftState};
 
 pub fn update_game_state(
     time: Res<Time>,
@@ -40,12 +41,15 @@ pub fn update_game_state(
 
 pub fn handle_restart(
     keys: Res<ButtonInput<KeyCode>>,
+    mut mobile_input: ResMut<MobileInput>,
     mut shift: ResMut<ShiftState>,
     mut grid_visible: ResMut<GridVisible>,
     game_entities: Query<Entity, With<GameEntity>>,
     mut commands: Commands,
 ) {
-    if !keys.just_pressed(KeyCode::KeyR) {
+    let restart = keys.just_pressed(KeyCode::KeyR) || mobile_input.restart;
+    mobile_input.restart = false;
+    if !restart {
         return;
     }
 
@@ -109,8 +113,8 @@ pub fn setup_ui(commands: &mut Commands) {
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
-            top: Val::Px(10.0),
-            left: Val::Px(10.0),
+            top: Val::Vh(1.0),
+            left: Val::Vw(1.0),
             ..default()
         }),
         GameEntity,
@@ -128,8 +132,8 @@ pub fn setup_ui(commands: &mut Commands) {
         )
         .with_style(Style {
             position_type: PositionType::Absolute,
-            top: Val::Px(300.0),
-            left: Val::Px(250.0),
+            top: Val::Vh(45.0),
+            left: Val::Vw(35.0),
             ..default()
         }),
         GameEntity,

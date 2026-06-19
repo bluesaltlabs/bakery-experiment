@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::audio::AudioEventQueue;
 use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Npc, Player, Solid, Station};
 use crate::level::grid_to_world;
+use crate::mobile::MobileInput;
 use crate::resources::MovementCooldown;
 
 pub fn player_movement(
@@ -14,6 +15,7 @@ pub fn player_movement(
     conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
     npc_query: Query<&GridPos, (With<Npc>, Without<Player>)>,
     mut audio_queue: ResMut<AudioEventQueue>,
+    mut mobile_input: ResMut<MobileInput>,
 ) {
     cooldown.0.tick(time.delta());
     if !cooldown.0.finished() {
@@ -28,6 +30,8 @@ pub fn player_movement(
         Some(Direction::Left)
     } else if keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight) {
         Some(Direction::Right)
+    } else if let Some(dir) = mobile_input.direction.take() {
+        Some(dir)
     } else {
         None
     };

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::audio::AudioEvent;
 use crate::components::*;
 use crate::level::spawn_item_entity;
+use crate::mobile::MobileInput;
 use crate::resources::ShiftState;
 
 pub fn update_carried_items(
@@ -157,8 +158,11 @@ pub fn player_interaction(
     conveyor_query: Query<&GridPos, (With<ConveyorBelt>, Without<Player>)>,
     mut commands: Commands,
     mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
+    mut mobile_input: ResMut<MobileInput>,
 ) {
-    if !keys.just_pressed(KeyCode::KeyE) && !keys.just_pressed(KeyCode::Space) {
+    let interact = keys.just_pressed(KeyCode::KeyE) || keys.just_pressed(KeyCode::Space) || mobile_input.interact;
+    mobile_input.interact = false;
+    if !interact {
         return;
     }
     if shift.game_over {

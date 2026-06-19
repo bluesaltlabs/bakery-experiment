@@ -4,6 +4,7 @@ mod audio;
 mod components;
 mod interaction;
 mod level;
+mod mobile;
 mod movement;
 mod npc;
 mod player;
@@ -16,12 +17,15 @@ use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use components::{Direction, GridPos, Player};
+use mobile::{MobileInput, MobileOverlayVisible};
 use resources::ConveyorTimerResource;
 
 fn make_window() -> Window {
     Window {
         title: "Bakery Puzzle-Sim".into(),
         visible: true,
+        #[cfg(target_arch = "wasm32")]
+        fit_canvas_to_parent: true,
         ..default()
     }
 }
@@ -61,11 +65,16 @@ fn main() {
             0.5,
             TimerMode::Repeating,
         )))
-        .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, spawn_npc_sys, setup_ui_sys))
+        .insert_resource(MobileInput::default())
+        .insert_resource(MobileOverlayVisible(true))
+        .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, spawn_npc_sys, setup_ui_sys, mobile::setup_mobile_overlay))
         .add_systems(
             Update,
             (
+                mobile::handle_tap_to_move,
+                mobile::handle_overlay_buttons,
                 movement::player_movement,
+                adjust_camera_scale,
                 camera_follow.after(movement::player_movement),
                 stations::process_conveyors,
                 stations::animate_conveyors,
@@ -86,6 +95,7 @@ fn main() {
                 stations::update_station_labels,
                 stations::tick_floor_timers,
                 player::update_direction_indicator,
+                mobile::handle_overlay_toggle,
                 level::toggle_grid,
                 ui::update_game_state,
                 ui::update_ui,
@@ -98,27 +108,41 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
+    let player_world = level::grid_to_world(GridPos { x: 1, y: 1 });
     commands.spawn(Camera2dBundle {
         transform: Transform::from_translation(Vec3::new(
-            level::MAP_WIDTH as f32 * level::TILE_SIZE / 2.0,
-            level::MAP_HEIGHT as f32 * level::TILE_SIZE / 2.0,
+            player_world.x,
+            player_world.y,
             1000.0,
         )),
         ..default()
     });
 }
 
+fn adjust_camera_scale(
+    windows: Query<&Window>,
+    mut camera_query: Query<&mut OrthographicProjection, With<Camera>>,
+) {
+    let Ok(window) = windows.get_single() else { return };
+    let Ok(mut projection) = camera_query.get_single_mut() else { return };
+
+    let map_w = level::MAP_WIDTH as f32 * level::TILE_SIZE;
+    let map_h = level::MAP_HEIGHT as f32 * level::TILE_SIZE;
+    let min_scale = 0.5;
+
+    let ideal_scale = (window.width() / map_w).min(window.height() / map_h) * 0.85;
+    projection.scale = ideal_scale.clamp(min_scale, 1.0);
+}
+
 fn camera_follow(
     player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<&mut Transform, (With<Camera>, Without<Player>)>,
-    window_query: Query<&Window>,
+    mut camera_query: Query<(&mut Transform, &OrthographicProjection), (With<Camera>, Without<Player>)>,
     time: Res<Time>,
 ) {
     let Ok(player) = player_query.get_single() else { return };
-    let Ok(mut camera) = camera_query.get_single_mut() else { return };
-    let Ok(window) = window_query.get_single() else { return };
+    let Ok((mut camera, projection)) = camera_query.get_single_mut() else { return };
 
-    let dead_zone_half = 9.0 * level::TILE_SIZE / 2.0;
+    let dead_zone_half = 3.0 * level::TILE_SIZE / 2.0;
 
     let offset = player.translation.truncate() - camera.translation.truncate();
 
@@ -129,12 +153,20 @@ fn camera_follow(
 
     let mut target = camera.translation.truncate() + excess;
 
-    let half_w = window.width() / 2.0;
-    let half_h = window.height() / 2.0;
+    let half_w = projection.area.half_size().x;
+    let half_h = projection.area.half_size().y;
     let map_w = level::MAP_WIDTH as f32 * level::TILE_SIZE;
     let map_h = level::MAP_HEIGHT as f32 * level::TILE_SIZE;
-    target.x = target.x.clamp(half_w, map_w - half_w);
-    target.y = target.y.clamp(half_h, map_h - half_h);
+    if half_w * 2.0 >= map_w {
+        target.x = map_w / 2.0;
+    } else {
+        target.x = target.x.clamp(half_w, map_w - half_w);
+    }
+    if half_h * 2.0 >= map_h {
+        target.y = map_h / 2.0;
+    } else {
+        target.y = target.y.clamp(half_h, map_h - half_h);
+    }
 
     let t = (8.0 * time.delta_seconds()).clamp(0.0, 1.0);
     camera.translation.x += (target.x - camera.translation.x) * t;
