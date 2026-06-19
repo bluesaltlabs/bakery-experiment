@@ -4,5 +4,3 @@ Cargo.lock
 *.swo
 *~
 .DS_Store
-web/bakery-experiment.*
-web/bakery-experiment_bg*
