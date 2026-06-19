@@ -20,6 +20,7 @@
       location.reload();
       return;
     }
+    console.log('crossOriginIsolated:', crossOriginIsolated);
     const { default: init } = await import('./web/bakery-experiment.js');
     init();
   }
