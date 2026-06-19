@@ -11,8 +11,19 @@
 </head>
 <body>
 <script type="module">
-  import init from './web/bakery-experiment.js';
-  init();
+  async function start() {
+    if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+      await navigator.serviceWorker.register('/sw.js');
+      await new Promise((resolve) => {
+        navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+      });
+      location.reload();
+      return;
+    }
+    const { default: init } = await import('./web/bakery-experiment.js');
+    init();
+  }
+  start();
 </script>
 </body>
 </html>
