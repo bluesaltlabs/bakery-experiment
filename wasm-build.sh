@@ -18,4 +18,4 @@ echo "Optimizing WASM with wasm-opt..."
 wasm-opt -Oz -o web/"$NAME"_bg.wasm web/"$NAME"_bg.wasm
 
 echo "Done. Output in web/ (serve with any HTTP server)"
-echo "  e.g. python3 -m http.server 8080 -d web"
+echo "  e.g. python -m http.server 8080 -d ."
