@@ -75,7 +75,7 @@ pub fn setup_ui(commands: &mut Commands) {
                 },
             ),
             TextSection::new(
-                "\nCases: 0/20",
+                "\nCases: 0/10",
                 TextStyle {
                     font_size: 20.0,
                     color: Color::WHITE,

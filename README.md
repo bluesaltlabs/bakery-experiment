@@ -9,7 +9,7 @@ A 2D top-down bakery production puzzle game inspired by Chip's Challenge. Move a
 - One hardcoded level with routing tension
 - One production chain (Source → Former → Oven → Packer → Palletizer)
 - Shift countdown timer (300 seconds)
-- Case target (20 cases to win)
+- Case target (10 cases to win)
 - Placeholder graphics (colored rectangles)
 - HUD showing timer, score, and carried item
 - Win/loss states with restart (R key)
@@ -36,15 +36,15 @@ A 2D top-down bakery production puzzle game inspired by Chip's Challenge. Move a
 
 ### Goal
 
-Deliver 20 cases to the Palletizer within 300 seconds.
+Deliver 10 cases to the Palletizer within 300 seconds.
 
 ### Loss
 
-Time runs out before reaching 20 cases.
+Time runs out before reaching 10 cases.
 
 ## Win/Loss Conditions
 
-- **Win**: Cases completed ≥ 20 before timer expires
+- **Win**: Cases completed ≥ 10 before timer expires
 - **Loss**: Timer reaches 0 without meeting the target
 
 ## Non-Goals (excluded from MVP)

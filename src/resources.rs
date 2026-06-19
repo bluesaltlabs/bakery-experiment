@@ -14,7 +14,7 @@ impl ShiftState {
         ShiftState {
             time_remaining: 300.0,
             cases_completed: 0,
-            target_cases: 20,
+            target_cases: 10,
             game_over: false,
             victory: false,
         }
