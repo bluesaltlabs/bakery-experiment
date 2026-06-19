@@ -1859,8 +1859,7 @@ function __wbg_get_imports() {
         },
         __wbindgen_init_externref_table: function() {
             const table = wasm.__wbindgen_externrefs;
-            let offset;
-            try { offset = table.grow(4); } catch (e) { offset = table.length - 4; }
+            const offset = table.grow(4);
             table.set(0, undefined);
             table.set(offset + 0, undefined);
             table.set(offset + 1, null);
