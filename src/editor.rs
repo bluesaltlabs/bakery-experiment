@@ -226,6 +226,25 @@ pub fn editor_scroll_zoom(
     }
 }
 
+pub fn editor_mobile_zoom(
+    editor: Res<EditorMode>,
+    mut mobile_input: ResMut<MobileInput>,
+    mut camera_query: Query<&mut OrthographicProjection, With<Camera>>,
+) {
+    if !editor.0 {
+        return;
+    }
+    let Ok(mut projection) = camera_query.get_single_mut() else { return };
+    if mobile_input.zoom_in {
+        mobile_input.zoom_in = false;
+        projection.scale = (projection.scale - 0.1).clamp(0.3, 3.0);
+    }
+    if mobile_input.zoom_out {
+        mobile_input.zoom_out = false;
+        projection.scale = (projection.scale + 0.1).clamp(0.3, 3.0);
+    }
+}
+
 pub fn update_editor_cursor(
     editor: Res<EditorMode>,
     windows: Query<&Window>,

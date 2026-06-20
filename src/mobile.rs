@@ -12,6 +12,8 @@ pub struct MobileInput {
     pub restart: bool,
     pub toggle_grid: bool,
     pub toggle_editor: bool,
+    pub zoom_in: bool,
+    pub zoom_out: bool,
 }
 
 #[derive(Resource)]
@@ -31,6 +33,12 @@ pub struct MobileGridButton;
 
 #[derive(Component)]
 pub struct MobileEditorButton;
+
+#[derive(Component)]
+pub struct MobileZoomInButton;
+
+#[derive(Component)]
+pub struct MobileZoomOutButton;
 
 #[derive(Component)]
 pub struct MobileHideButton;
@@ -131,6 +139,8 @@ pub fn handle_overlay_buttons(
     down_query: Query<&Interaction, (With<MobileDownButton>, Changed<Interaction>)>,
     left_query: Query<&Interaction, (With<MobileLeftButton>, Changed<Interaction>)>,
     right_query: Query<&Interaction, (With<MobileRightButton>, Changed<Interaction>)>,
+    zoom_in_query: Query<&Interaction, (With<MobileZoomInButton>, Changed<Interaction>)>,
+    zoom_out_query: Query<&Interaction, (With<MobileZoomOutButton>, Changed<Interaction>)>,
     mut mobile_input: ResMut<MobileInput>,
 ) {
     if interact_query.iter().any(|i| *i == Interaction::Pressed) {
@@ -156,6 +166,12 @@ pub fn handle_overlay_buttons(
             else if down { Some(Direction::Down) }
             else if left { Some(Direction::Left) }
             else { Some(Direction::Right) };
+    }
+    if zoom_in_query.iter().any(|i| *i == Interaction::Pressed) {
+        mobile_input.zoom_in = true;
+    }
+    if zoom_out_query.iter().any(|i| *i == Interaction::Pressed) {
+        mobile_input.zoom_out = true;
     }
 }
 
@@ -397,6 +413,56 @@ pub fn setup_mobile_overlay(mut commands: Commands) {
                 "F2\nEdit",
                 text_style(),
             ));
+        });
+
+        parent.spawn(NodeBundle {
+            style: Style {
+                width: Val::Px(60.0),
+                height: Val::Px(36.0),
+                flex_direction: FlexDirection::Row,
+                ..default()
+            },
+            background_color: BackgroundColor(Color::NONE),
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn((
+                ButtonBundle {
+                    style: half_arrow_style(),
+                    background_color: bg(),
+                    ..default()
+                },
+                MobileZoomOutButton,
+            ))
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    "-",
+                    TextStyle {
+                        font_size: 18.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                ));
+            });
+
+            parent.spawn((
+                ButtonBundle {
+                    style: half_arrow_style(),
+                    background_color: bg(),
+                    ..default()
+                },
+                MobileZoomInButton,
+            ))
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    "+",
+                    TextStyle {
+                        font_size: 18.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                ));
+            });
         });
 
         parent.spawn((

@@ -118,6 +118,7 @@ fn main() {
                 editor::toggle_editor_mode,
                 editor::editor_camera_pan,
                 editor::editor_scroll_zoom,
+                editor::editor_mobile_zoom,
                 editor::update_editor_cursor,
                 editor::editor_place_tile,
                 editor::editor_undo,
