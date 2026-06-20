@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::audio::AudioEventQueue;
 use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Npc, Player, Solid, Station};
-use crate::level::grid_to_world;
+use crate::level::{grid_to_world, Z_PLAYER};
 use crate::mobile::MobileInput;
 use crate::resources::{EditorMode, MovementCooldown};
 
@@ -60,7 +60,7 @@ pub fn player_movement(
         pos.x = new_pos.x;
         pos.y = new_pos.y;
         transform.translation = grid_to_world(new_pos);
-        transform.translation.z = 0.01;
+        transform.translation.z = Z_PLAYER;
         audio_queue.0.push(crate::audio::AudioEvent::Step);
     }
 

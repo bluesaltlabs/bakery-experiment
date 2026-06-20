@@ -1,8 +1,6 @@
 use bevy::prelude::*;
-use crate::components::{ConveyorBelt, GridPos, Item, Npc, Player, Solid, Station};
-use crate::level::{grid_to_world, MAP_WIDTH, MAP_HEIGHT};
-
-pub(crate) const NPC_Z: f32 = 0.02;
+use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Item, Npc, Player, Solid, Station};
+use crate::level::{grid_to_world, MAP_WIDTH, MAP_HEIGHT, Z_NPC};
 
 pub(crate) fn is_tile_blocked_for_npc(
     tile: GridPos,
@@ -63,7 +61,7 @@ pub(crate) fn try_npc_move(
         pos.x = new_pos.x;
         pos.y = new_pos.y;
         transform.translation = grid_to_world(new_pos);
-        transform.translation.z = NPC_Z;
+        transform.translation.z = Z_NPC;
         npc.move_timer = npc.move_cooldown;
     }
 }
@@ -80,4 +78,27 @@ pub(crate) fn move_npc_toward(
 ) -> bool {
     try_npc_move(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc);
     pos.x == target.x && pos.y == target.y
+}
+
+pub(crate) fn handle_moving<State>(
+    pos: &mut GridPos,
+    transform: &mut Transform,
+    facing: &mut Facing,
+    npc: &mut Npc,
+    target: GridPos,
+    on_arrival: State,
+    arrival_facing: Option<Direction>,
+    solid_query: &Query<&GridPos, (With<Solid>, Without<Item>, Without<Npc>)>,
+    station_pos_query: &Query<&GridPos, (With<Station>, Without<Npc>)>,
+    conveyor_pos_query: &Query<&GridPos, (With<ConveyorBelt>, Without<Npc>)>,
+    player_query: &Query<&GridPos, (With<Player>, Without<Npc>)>,
+) -> Option<State> {
+    if move_npc_toward(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc) {
+        if let Some(dir) = arrival_facing {
+            facing.0 = dir;
+        }
+        Some(on_arrival)
+    } else {
+        None
+    }
 }

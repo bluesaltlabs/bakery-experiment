@@ -224,7 +224,7 @@ fn spawn_conveyor(commands: &mut Commands, pos: GridPos, direction: crate::compo
         GameEntity,
     ));
 
-    let arrow_pos = Vec3::new(world_pos.x + offset_x, world_pos.y + offset_y, 0.05);
+    let arrow_pos = Vec3::new(world_pos.x + offset_x, world_pos.y + offset_y, Z_CONVEYOR_ARROW);
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -243,6 +243,17 @@ fn spawn_conveyor(commands: &mut Commands, pos: GridPos, direction: crate::compo
     ));
 }
 
+pub const INDICATOR_HALF: f32 = TILE_SIZE * 0.35;
+pub const INDICATOR_BAR_HALF: f32 = TILE_SIZE * 0.075;
+pub const Z_GRID_LINE: f32 = 0.5;
+pub const Z_CONVEYOR_ARROW: f32 = 0.05;
+pub const Z_NPC: f32 = 0.02;
+pub const Z_PLAYER: f32 = 0.01;
+pub const Z_PLAYER_INDICATOR: f32 = 0.05;
+pub const Z_CARRIED_ITEM: f32 = 0.1;
+pub const Z_ITEM_ON_CONVEYOR: f32 = 0.06;
+pub const Z_EDITOR_CURSOR: f32 = 100.0;
+
 const GRID_LINE_COLOR: Color = Color::srgb(0.35, 0.35, 0.4);
 const GRID_LINE_WIDTH: f32 = 2.0;
 
@@ -260,7 +271,7 @@ fn spawn_gridlines(commands: &mut Commands) {
                         custom_size: Some(Vec2::new(GRID_LINE_WIDTH, map_h)),
                         ..default()
                     },
-                    transform: Transform::from_translation(Vec3::new(x, map_h / 2.0, 0.5)),
+                    transform: Transform::from_translation(Vec3::new(x, map_h / 2.0, Z_GRID_LINE)),
                     ..default()
                 },
                 GameEntity,
@@ -276,7 +287,7 @@ fn spawn_gridlines(commands: &mut Commands) {
                         custom_size: Some(Vec2::new(map_w, GRID_LINE_WIDTH)),
                         ..default()
                     },
-                    transform: Transform::from_translation(Vec3::new(map_w / 2.0, y, 0.5)),
+                    transform: Transform::from_translation(Vec3::new(map_w / 2.0, y, Z_GRID_LINE)),
                     ..default()
                 },
                 GameEntity,

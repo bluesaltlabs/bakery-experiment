@@ -57,29 +57,6 @@ fn handle_picking_up(
     Some(ConveyorLoaderState::WaitingAtConveyor)
 }
 
-fn handle_moving(
-    pos: &mut GridPos,
-    transform: &mut Transform,
-    facing: &mut Facing,
-    npc: &mut Npc,
-    target: GridPos,
-    on_arrival: ConveyorLoaderState,
-    arrival_facing: Option<Direction>,
-    solid_query: &Query<&GridPos, (With<Solid>, Without<Item>, Without<Npc>)>,
-    station_pos_query: &Query<&GridPos, (With<Station>, Without<Npc>)>,
-    conveyor_pos_query: &Query<&GridPos, (With<ConveyorBelt>, Without<Npc>)>,
-    player_query: &Query<&GridPos, (With<Player>, Without<Npc>)>,
-) -> Option<ConveyorLoaderState> {
-    if movement::move_npc_toward(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc) {
-        if let Some(dir) = arrival_facing {
-            facing.0 = dir;
-        }
-        Some(on_arrival)
-    } else {
-        None
-    }
-}
-
 fn handle_inserting_to_former(
     npc: &mut Npc,
     pos: &GridPos,
@@ -174,7 +151,7 @@ pub fn conveyor_loader_ai(
             ),
             ConveyorLoaderState::MovingToFormer => {
                 let target = targets.operate_pos();
-                handle_moving(
+                movement::handle_moving(
                     &mut pos, &mut transform, &mut facing, &mut npc,
                     target, ConveyorLoaderState::InsertingToFormer, None,
                     &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
@@ -210,7 +187,7 @@ pub fn conveyor_loader_ai(
             ),
             ConveyorLoaderState::ReturningToConveyor => {
                 let target = targets.spawn;
-                handle_moving(
+                movement::handle_moving(
                     &mut pos, &mut transform, &mut facing, &mut npc,
                     target, ConveyorLoaderState::WaitingAtConveyor, Some(Direction::Left),
                     &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,

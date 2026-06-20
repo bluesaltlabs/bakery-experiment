@@ -4,6 +4,7 @@ mod audio;
 mod components;
 mod editor;
 mod interaction;
+mod io;
 mod level;
 mod mobile;
 mod movement;

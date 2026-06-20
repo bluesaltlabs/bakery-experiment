@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::audio::AudioEvent;
 use crate::components::*;
-use crate::level::{grid_to_world, TILE_SIZE};
+use crate::level::{grid_to_world, TILE_SIZE, Z_ITEM_ON_CONVEYOR};
 use crate::resources::{ConveyorTimerResource, EditorMode};
 
 pub fn process_stations(
@@ -96,7 +96,7 @@ pub fn sync_ground_items(
     for (pos, mut transform) in item_query.iter_mut() {
         let mut p = grid_to_world(*pos);
         if conveyor_query.iter().any(|gp| *gp == *pos) {
-            p.z = 0.06;
+            p.z = Z_ITEM_ON_CONVEYOR;
         }
         transform.translation = p;
     }

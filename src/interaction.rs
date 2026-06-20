@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::audio::AudioEvent;
 use crate::components::*;
-use crate::level::spawn_item_entity;
+use crate::level::{spawn_item_entity, Z_CARRIED_ITEM};
 use crate::mobile::MobileInput;
 use crate::resources::{EditorMode, ShiftState};
 
@@ -15,7 +15,7 @@ pub fn update_carried_items(
                 item_transform.translation = Vec3::new(
                     carrier_transform.translation.x,
                     carrier_transform.translation.y,
-                    0.1,
+                    Z_CARRIED_ITEM,
                 );
             }
         }
@@ -91,7 +91,7 @@ fn try_station_pickup(
     let item_entity = spawn_item_entity(
         commands,
         station.output_kind,
-        Vec3::new(player_transform.translation.x, player_transform.translation.y, 0.1),
+        Vec3::new(player_transform.translation.x, player_transform.translation.y, Z_CARRIED_ITEM),
     );
     carrying.0 = Some((item_entity, station.output_kind));
     station.has_output = false;

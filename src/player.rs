@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use crate::components::*;
 use crate::level::*;
+use crate::level::{TILE_SIZE, MAP_HEIGHT, PLAYER_START, Z_PLAYER, Z_PLAYER_INDICATOR, INDICATOR_HALF, INDICATOR_BAR_HALF};
 
 pub fn spawn_player(commands: &mut Commands) {
     let (gx, row) = PLAYER_START;
@@ -22,7 +23,7 @@ pub fn spawn_player_at(commands: &mut Commands, pos: GridPos) {
             transform: Transform::from_translation(Vec3::new(
                 world_pos.x,
                 world_pos.y,
-                0.01,
+                Z_PLAYER,
             )),
             visibility: Visibility::Visible,
             ..default()
@@ -44,7 +45,7 @@ pub fn spawn_player_at(commands: &mut Commands, pos: GridPos) {
             transform: Transform::from_translation(Vec3::new(
                 world_pos.x,
                 world_pos.y + TILE_SIZE * 0.35 - TILE_SIZE * 0.075,
-                0.05,
+                Z_PLAYER_INDICATOR,
             )),
             ..default()
         },
@@ -61,13 +62,13 @@ pub fn update_direction_indicator(
     let Ok((mut transform, mut sprite)) = indicator_query.get_single_mut() else { return };
 
     let (offset_x, offset_y, width, height) = facing.0.indicator_offset(
-        TILE_SIZE * 0.35,
-        TILE_SIZE * 0.075,
+        INDICATOR_HALF,
+        INDICATOR_BAR_HALF,
     );
     transform.translation = Vec3::new(
         player_transform.translation.x + offset_x,
         player_transform.translation.y + offset_y,
-        0.05,
+        Z_PLAYER_INDICATOR,
     );
     sprite.custom_size = Some(Vec2::new(width, height));
 }

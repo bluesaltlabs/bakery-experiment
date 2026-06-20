@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::input::mouse::MouseWheel;
 use crate::components::{Direction, GameEntity, GridPos, NpcKind, Player};
-use crate::level::{MAP_HEIGHT, MAP_WIDTH, TILE_SIZE, CONVEYOR};
+use crate::level::{MAP_HEIGHT, MAP_WIDTH, TILE_SIZE, CONVEYOR, Z_EDITOR_CURSOR};
 use crate::resources::{EditorMode, LevelData, SelectedNpc, SelectedTile, UndoEntry, UndoStack};
 
 const PALETTE_WIDTH: f32 = 80.0;
@@ -48,6 +48,39 @@ const NPC_INFO: &[(NpcKind, &str, (f32, f32, f32))] = &[
     (NpcKind::PackerHauler, "PH", (0.3, 0.5, 0.9)),
 ];
 
+fn spawn_palette_button(
+    parent: &mut ChildBuilder,
+    label: &str,
+    color: Color,
+    component: impl Component,
+) {
+    parent.spawn((
+        ButtonBundle {
+            style: Style {
+                width: Val::Px(PALETTE_WIDTH - 8.0),
+                height: Val::Px(28.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border: UiRect::all(Val::Px(1.0)),
+                ..default()
+            },
+            background_color: BackgroundColor(color),
+            ..default()
+        },
+        component,
+    ))
+    .with_children(|parent| {
+        parent.spawn(TextBundle::from_section(
+            label,
+            TextStyle {
+                font_size: 10.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        ));
+    });
+}
+
 pub fn setup_editor_ui(mut commands: Commands) {
     commands.spawn((
         NodeBundle {
@@ -73,161 +106,33 @@ pub fn setup_editor_ui(mut commands: Commands) {
         EditorPaletteRoot,
     ))
     .with_children(|parent| {
-        parent.spawn((
-            TextBundle::from_section(
-                "Tiles",
-                TextStyle {
-                    font_size: 12.0,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            ),
+        parent.spawn(TextBundle::from_section(
+            "Tiles",
+            TextStyle {
+                font_size: 12.0,
+                color: Color::WHITE,
+                ..default()
+            },
         ));
         for &(tile, label, (r, g, b)) in TILE_INFO {
-            let color = Color::srgb(r, g, b);
-            parent.spawn((
-                ButtonBundle {
-                    style: Style {
-                        width: Val::Px(PALETTE_WIDTH - 8.0),
-                        height: Val::Px(28.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(1.0)),
-                        ..default()
-                    },
-                    background_color: BackgroundColor(color),
-                    ..default()
-                },
-                TileButton(tile, color),
-            ))
-            .with_children(|parent| {
-                parent.spawn(TextBundle::from_section(
-                    label,
-                    TextStyle {
-                        font_size: 10.0,
-                        color: Color::WHITE,
-                        ..default()
-                    },
-                ));
-            });
+            spawn_palette_button(parent, label, Color::srgb(r, g, b), TileButton(tile, Color::srgb(r, g, b)));
         }
 
-        parent.spawn((
-            TextBundle::from_section(
-                "NPCs",
-                TextStyle {
-                    font_size: 12.0,
-                    color: Color::srgb(0.7, 0.7, 0.7),
-                    ..default()
-                },
-            ),
+        parent.spawn(TextBundle::from_section(
+            "NPCs",
+            TextStyle {
+                font_size: 12.0,
+                color: Color::srgb(0.7, 0.7, 0.7),
+                ..default()
+            },
         ));
         for &(kind, label, (r, g, b)) in NPC_INFO {
-            let color = Color::srgb(r, g, b);
-            parent.spawn((
-                ButtonBundle {
-                    style: Style {
-                        width: Val::Px(PALETTE_WIDTH - 8.0),
-                        height: Val::Px(28.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(1.0)),
-                        ..default()
-                    },
-                    background_color: BackgroundColor(color),
-                    ..default()
-                },
-                NpcPaletteButton(kind, color),
-            ))
-            .with_children(|parent| {
-                parent.spawn(TextBundle::from_section(
-                    label,
-                    TextStyle {
-                        font_size: 10.0,
-                        color: Color::WHITE,
-                        ..default()
-                    },
-                ));
-            });
+            spawn_palette_button(parent, label, Color::srgb(r, g, b), NpcPaletteButton(kind, Color::srgb(r, g, b)));
         }
 
-        parent.spawn((
-            ButtonBundle {
-                style: Style {
-                    width: Val::Px(PALETTE_WIDTH - 8.0),
-                    height: Val::Px(28.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(1.0)),
-                    ..default()
-                },
-                background_color: BackgroundColor(Color::srgb(0.15, 0.5, 0.15)),
-                ..default()
-            },
-            EditorSaveButton,
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                "Save",
-                TextStyle {
-                    font_size: 10.0,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            ));
-        });
-
-        parent.spawn((
-            ButtonBundle {
-                style: Style {
-                    width: Val::Px(PALETTE_WIDTH - 8.0),
-                    height: Val::Px(28.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(1.0)),
-                    ..default()
-                },
-                background_color: BackgroundColor(Color::srgb(0.5, 0.3, 0.15)),
-                ..default()
-            },
-            EditorLoadButton,
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                "Load",
-                TextStyle {
-                    font_size: 10.0,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            ));
-        });
-
-        parent.spawn((
-            ButtonBundle {
-                style: Style {
-                    width: Val::Px(PALETTE_WIDTH - 8.0),
-                    height: Val::Px(28.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    border: UiRect::all(Val::Px(1.0)),
-                    ..default()
-                },
-                background_color: BackgroundColor(Color::srgb(0.6, 0.2, 0.2)),
-                ..default()
-            },
-            EditorResetButton,
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                "Reset",
-                TextStyle {
-                    font_size: 10.0,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            ));
-        });
+        spawn_palette_button(parent, "Save", Color::srgb(0.15, 0.5, 0.15), EditorSaveButton);
+        spawn_palette_button(parent, "Load", Color::srgb(0.5, 0.3, 0.15), EditorLoadButton);
+        spawn_palette_button(parent, "Reset", Color::srgb(0.6, 0.2, 0.2), EditorResetButton);
     });
 }
 
@@ -239,7 +144,7 @@ pub fn setup_editor_cursor(mut commands: Commands) {
                 custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),
                 ..default()
             },
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, Z_EDITOR_CURSOR)),
             visibility: Visibility::Hidden,
             ..default()
         },
@@ -351,7 +256,7 @@ pub fn update_editor_cursor(
     let grid_x = (world_pos.x / TILE_SIZE).floor() * TILE_SIZE + TILE_SIZE / 2.0;
     let grid_y = (world_pos.y / TILE_SIZE).floor() * TILE_SIZE + TILE_SIZE / 2.0;
 
-    transform.translation = Vec3::new(grid_x, grid_y, 100.0);
+    transform.translation = Vec3::new(grid_x, grid_y, Z_EDITOR_CURSOR);
     *visibility = Visibility::Visible;
 }
 
@@ -552,60 +457,18 @@ pub fn handle_editor_save_load(
     mut rebuild: ResMut<RebuildRequested>,
 ) {
     if save_buttons.iter().any(|i| *i == Interaction::Pressed) {
-        save_level(&level_data);
+        crate::io::save_level_data(&level_data);
     }
     if load_buttons.iter().any(|i| *i == Interaction::Pressed) {
-        if let Some(loaded) = load_level() {
+        if let Some(loaded) = crate::io::load_level_data() {
             *level_data = loaded;
             rebuild.0 = true;
         }
     }
     if reset_buttons.iter().any(|i| *i == Interaction::Pressed) {
-        delete_save();
+        crate::io::delete_saved_level();
         *level_data = LevelData::default_level();
         rebuild.0 = true;
-    }
-}
-
-fn save_level(level_data: &LevelData) {
-    let json = serde_json::to_string_pretty(level_data).unwrap();
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            let _ = window.local_storage().ok().flatten().map(|s| s.set_item("bakery_level", &json));
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = std::fs::write("bakery_level.json", &json);
-    }
-}
-
-fn load_level() -> Option<LevelData> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        let json = web_sys::window()?
-            .local_storage().ok()??
-            .get_item("bakery_level").ok()??;
-        serde_json::from_str(&json).ok()
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let json = std::fs::read_to_string("bakery_level.json").ok()?;
-        serde_json::from_str(&json).ok()
-    }
-}
-
-fn delete_save() {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if let Some(window) = web_sys::window() {
-            let _ = window.local_storage().ok().flatten().map(|s| s.remove_item("bakery_level"));
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = std::fs::remove_file("bakery_level.json");
     }
 }
 
@@ -644,6 +507,24 @@ pub fn update_palette_visibility(
     }
 }
 
+const TILE_KEY_MAP: &[(KeyCode, u8)] = &[
+    (KeyCode::Digit0, 0),
+    (KeyCode::Digit1, 1),
+    (KeyCode::Digit2, 2),
+    (KeyCode::Digit3, 3),
+    (KeyCode::Digit4, 4),
+    (KeyCode::Digit5, 5),
+    (KeyCode::Digit6, 6),
+    (KeyCode::Digit7, 7),
+    (KeyCode::Digit8, 8),
+];
+
+const NPC_KEY_MAP: &[(KeyCode, NpcKind)] = &[
+    (KeyCode::F9, NpcKind::ConveyorLoader),
+    (KeyCode::F10, NpcKind::OvenHauler),
+    (KeyCode::F11, NpcKind::PackerHauler),
+];
+
 pub fn editor_palette_keyboard(
     editor: Res<EditorMode>,
     keys: Res<ButtonInput<KeyCode>>,
@@ -653,42 +534,21 @@ pub fn editor_palette_keyboard(
     if !editor.0 {
         return;
     }
-    if keys.just_pressed(KeyCode::Digit0) {
-        selected.0 = 0;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit1) {
-        selected.0 = 1;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit2) {
-        selected.0 = 2;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit3) {
-        selected.0 = 3;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit4) {
-        selected.0 = 4;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit5) {
-        selected.0 = 5;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit6) {
-        selected.0 = 6;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit7) {
-        selected.0 = 7;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::Digit8) {
-        selected.0 = 8;
-        selected_npc.0 = None;
-    } else if keys.just_pressed(KeyCode::F9) {
-        selected_npc.0 = Some(NpcKind::ConveyorLoader);
-        selected.0 = 0;
-    } else if keys.just_pressed(KeyCode::F10) {
-        selected_npc.0 = Some(NpcKind::OvenHauler);
-        selected.0 = 0;
-    } else if keys.just_pressed(KeyCode::F11) {
-        selected_npc.0 = Some(NpcKind::PackerHauler);
-        selected.0 = 0;
+
+    for &(key, tile) in TILE_KEY_MAP {
+        if keys.just_pressed(key) {
+            selected.0 = tile;
+            selected_npc.0 = None;
+            return;
+        }
+    }
+
+    for &(key, kind) in NPC_KEY_MAP {
+        if keys.just_pressed(key) {
+            selected_npc.0 = Some(kind);
+            selected.0 = 0;
+            return;
+        }
     }
 }
 

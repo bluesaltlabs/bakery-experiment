@@ -71,22 +71,7 @@ pub struct LevelData {
 
 impl LevelData {
     pub fn new() -> Self {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(json) = std::fs::read_to_string("bakery_level.json") {
-            if let Ok(loaded) = serde_json::from_str(&json) {
-                return loaded;
-            }
-        }
-        #[cfg(target_arch = "wasm32")]
-        if let Some(json) = web_sys::window()
-            .and_then(|w| w.local_storage().ok().flatten())
-            .and_then(|s| s.get_item("bakery_level").ok().flatten())
-        {
-            if let Ok(loaded) = serde_json::from_str(&json) {
-                return loaded;
-            }
-        }
-        Self::default_level()
+        crate::io::load_level_data().unwrap_or_else(Self::default_level)
     }
 
     pub fn default_level() -> Self {

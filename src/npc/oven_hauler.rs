@@ -6,29 +6,6 @@ use crate::components::{
 use crate::resources::EditorMode;
 use super::movement;
 
-fn handle_moving(
-    pos: &mut GridPos,
-    transform: &mut Transform,
-    facing: &mut Facing,
-    npc: &mut Npc,
-    target: GridPos,
-    on_arrival: OvenHaulerState,
-    arrival_facing: Option<Direction>,
-    solid_query: &Query<&GridPos, (With<Solid>, Without<Item>, Without<Npc>)>,
-    station_pos_query: &Query<&GridPos, (With<Station>, Without<Npc>)>,
-    conveyor_pos_query: &Query<&GridPos, (With<ConveyorBelt>, Without<Npc>)>,
-    player_query: &Query<&GridPos, (With<Player>, Without<Npc>)>,
-) -> Option<OvenHaulerState> {
-    if movement::move_npc_toward(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc) {
-        if let Some(dir) = arrival_facing {
-            facing.0 = dir;
-        }
-        Some(on_arrival)
-    } else {
-        None
-    }
-}
-
 fn handle_inserting_to_packer(
     npc: &mut Npc,
     pos: &GridPos,
@@ -112,7 +89,7 @@ pub fn oven_hauler_ai(
             }
             OvenHaulerState::MovingToPacker => {
                 let target = targets.packer_stand();
-                handle_moving(
+                movement::handle_moving(
                     &mut pos, &mut transform, &mut facing, &mut npc,
                     target, OvenHaulerState::InsertingToPacker, None,
                     &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
@@ -123,7 +100,7 @@ pub fn oven_hauler_ai(
             ),
             OvenHaulerState::ReturningToOvenWait => {
                 let target = targets.spawn;
-                handle_moving(
+                movement::handle_moving(
                     &mut pos, &mut transform, &mut facing, &mut npc,
                     target, OvenHaulerState::WaitingAtOven, Some(Direction::Left),
                     &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,

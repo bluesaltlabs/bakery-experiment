@@ -6,29 +6,6 @@ use crate::components::{
 use crate::resources::{EditorMode, ShiftState};
 use super::movement;
 
-fn handle_moving(
-    pos: &mut GridPos,
-    transform: &mut Transform,
-    facing: &mut Facing,
-    npc: &mut Npc,
-    target: GridPos,
-    on_arrival: PackerHaulerState,
-    arrival_facing: Option<Direction>,
-    solid_query: &Query<&GridPos, (With<Solid>, Without<Item>, Without<Npc>)>,
-    station_pos_query: &Query<&GridPos, (With<Station>, Without<Npc>)>,
-    conveyor_pos_query: &Query<&GridPos, (With<ConveyorBelt>, Without<Npc>)>,
-    player_query: &Query<&GridPos, (With<Player>, Without<Npc>)>,
-) -> Option<PackerHaulerState> {
-    if movement::move_npc_toward(pos, transform, target, solid_query, station_pos_query, conveyor_pos_query, player_query, npc) {
-        if let Some(dir) = arrival_facing {
-            facing.0 = dir;
-        }
-        Some(on_arrival)
-    } else {
-        None
-    }
-}
-
 fn handle_inserting_to_palletizer(
     npc: &mut Npc,
     pos: &GridPos,
@@ -107,7 +84,7 @@ pub fn packer_hauler_ai(
             }
             PackerHaulerState::MovingToPalletizer => {
                 let target = targets.palletizer_stand();
-                handle_moving(
+                movement::handle_moving(
                     &mut pos, &mut transform, &mut facing, &mut npc,
                     target, PackerHaulerState::InsertingToPalletizer, None,
                     &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
@@ -118,7 +95,7 @@ pub fn packer_hauler_ai(
             ),
             PackerHaulerState::ReturningToPackerWait => {
                 let target = targets.spawn;
-                handle_moving(
+                movement::handle_moving(
                     &mut pos, &mut transform, &mut facing, &mut npc,
                     target, PackerHaulerState::WaitingAtPacker, Some(Direction::Right),
                     &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,

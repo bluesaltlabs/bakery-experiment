@@ -3,14 +3,13 @@ pub mod conveyor_loader;
 pub mod oven_hauler;
 pub mod packer_hauler;
 
-use movement::*;
 use bevy::prelude::*;
 use crate::components::{
     Carrying, ConveyorLoaderState, ConveyorLoaderTargets, Direction, Facing, GameEntity,
     GridPos, Npc, NpcDirectionIndicator, NpcKind, OvenHaulerState, OvenHaulerTargets,
     PackerHaulerState, PackerHaulerTargets, Station, StationKind, TableMarker,
 };
-use crate::level::{grid_to_world, spawn_item_entity, TILE_SIZE};
+use crate::level::{grid_to_world, spawn_item_entity, TILE_SIZE, Z_NPC, Z_PLAYER_INDICATOR, INDICATOR_HALF, INDICATOR_BAR_HALF};
 
 pub fn spawn_npc(
     commands: &mut Commands,
@@ -34,7 +33,7 @@ pub fn spawn_npc(
                 transform: Transform::from_translation(Vec3::new(
                     world_pos.x,
                     world_pos.y,
-                    NPC_Z,
+                    Z_NPC,
                 )),
                 ..default()
             },
@@ -61,7 +60,7 @@ pub fn spawn_npc(
             transform: Transform::from_translation(Vec3::new(
                 world_pos.x,
                 world_pos.y + TILE_SIZE * 0.35 - TILE_SIZE * 0.075,
-                0.05,
+                Z_PLAYER_INDICATOR,
             )),
             ..default()
         },
@@ -207,13 +206,13 @@ pub fn update_npc_direction_indicator(
             }
 
             let (offset_x, offset_y, width, height) = facing.0.indicator_offset(
-                TILE_SIZE * 0.35,
-                TILE_SIZE * 0.075,
+                INDICATOR_HALF,
+                INDICATOR_BAR_HALF,
             );
             transform.translation = Vec3::new(
                 npc_transform.translation.x + offset_x,
                 npc_transform.translation.y + offset_y,
-                0.05,
+                Z_PLAYER_INDICATOR,
             );
             sprite.custom_size = Some(Vec2::new(width, height));
         }
