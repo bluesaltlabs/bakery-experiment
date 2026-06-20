@@ -3,15 +3,15 @@ use crate::audio::{AudioEvent, UserVolume};
 use crate::components::*;
 use crate::level::*;
 use crate::mobile::MobileInput;
-use crate::npc;
-use crate::resources::{GridVisible, ShiftState};
+use crate::resources::{EditorMode, GridVisible, LevelData, ShiftState};
 
 pub fn update_game_state(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut shift: ResMut<ShiftState>,
     mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
-    if shift.game_over {
+    if editor.0 || shift.game_over {
         return;
     }
 
@@ -45,6 +45,7 @@ pub fn handle_restart(
     mut shift: ResMut<ShiftState>,
     mut grid_visible: ResMut<GridVisible>,
     game_entities: Query<Entity, With<GameEntity>>,
+    level_data: Res<LevelData>,
     mut commands: Commands,
 ) {
     let restart = keys.just_pressed(KeyCode::KeyR) || mobile_input.restart;
@@ -59,11 +60,11 @@ pub fn handle_restart(
 
     *shift = ShiftState::new();
     grid_visible.0 = true;
-    setup_level(&mut commands);
+    setup_level(&mut commands, &level_data);
     crate::player::spawn_player(&mut commands);
-    npc::spawn_conveyor_loader(&mut commands, GridPos { x: 4, y: 4 }, Color::srgb(1.0, 0.5, 0.0), Color::srgb(1.0, 0.7, 0.3), crate::components::Direction::Left, 1.0, 0.5);
-    npc::spawn_oven_hauler(&mut commands, GridPos { x: 5, y: 2 }, Color::srgb(0.2, 0.8, 0.5), Color::srgb(0.4, 1.0, 0.6), crate::components::Direction::Left, 0.5, 0.25);
-    npc::spawn_packer_hauler(&mut commands, GridPos { x: 7, y: 5 }, Color::srgb(0.3, 0.5, 0.9), Color::srgb(0.5, 0.7, 1.0), crate::components::Direction::Right, 0.5, 0.25);
+    for npc_data in &level_data.npcs {
+        crate::npc::spawn_npc_from_data(&mut commands, npc_data);
+    }
     setup_ui(&mut commands);
 }
 

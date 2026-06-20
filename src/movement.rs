@@ -3,9 +3,10 @@ use crate::audio::AudioEventQueue;
 use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Npc, Player, Solid, Station};
 use crate::level::grid_to_world;
 use crate::mobile::MobileInput;
-use crate::resources::MovementCooldown;
+use crate::resources::{EditorMode, MovementCooldown};
 
 pub fn player_movement(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     mut cooldown: ResMut<MovementCooldown>,
@@ -17,6 +18,9 @@ pub fn player_movement(
     mut audio_queue: ResMut<AudioEventQueue>,
     mut mobile_input: ResMut<MobileInput>,
 ) {
+    if editor.0 {
+        return;
+    }
     cooldown.0.tick(time.delta());
     if !cooldown.0.finished() {
         return;

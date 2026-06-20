@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::components::{
     Carrying, ConveyorBelt, Direction, Facing, GridPos, Item, ItemKind, Npc,
-    PackerHaulerState, Player, Solid, Station, StationKind, TableMarker,
+    PackerHaulerState, PackerHaulerTargets, Player, Solid, Station, StationKind, TableMarker,
 };
 use crate::resources::ShiftState;
 use super::movement;
@@ -62,7 +62,7 @@ pub fn packer_hauler_ai(
     mut shift: ResMut<ShiftState>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
-        &mut PackerHaulerState, &mut Transform,
+        &mut PackerHaulerState, &mut Transform, &PackerHaulerTargets,
     )>,
     mut station_query: Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
     station_pos_query: Query<&GridPos, (With<Station>, Without<Npc>)>,
@@ -77,15 +77,16 @@ pub fn packer_hauler_ai(
 
     let dt = time.delta_seconds();
 
-    for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform) in npc_query.iter_mut() {
+    for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform, targets) in npc_query.iter_mut() {
         npc.move_timer -= dt;
         npc.action_timer -= dt;
 
         *state = match *state {
             PackerHaulerState::WaitingAtPacker => {
+                let check_pos = targets.packer_pos();
                 if super::try_wait_for_station_output(
                     &mut npc, &mut station_query,
-                    GridPos { x: 8, y: 5 }, StationKind::Packer,
+                    check_pos, StationKind::Packer,
                 ) {
                     Some(PackerHaulerState::CollectingFromPacker)
                 } else {
@@ -103,19 +104,25 @@ pub fn packer_hauler_ai(
                     None
                 }
             }
-            PackerHaulerState::MovingToPalletizer => handle_moving(
-                &mut pos, &mut transform, &mut facing, &mut npc,
-                GridPos { x: 7, y: 1 }, PackerHaulerState::InsertingToPalletizer, None,
-                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
-            ),
+            PackerHaulerState::MovingToPalletizer => {
+                let target = targets.palletizer_stand();
+                handle_moving(
+                    &mut pos, &mut transform, &mut facing, &mut npc,
+                    target, PackerHaulerState::InsertingToPalletizer, None,
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+                )
+            }
             PackerHaulerState::InsertingToPalletizer => handle_inserting_to_palletizer(
                 &mut npc, &pos, &mut facing, &mut carrying, &mut shift, &mut station_query, &mut commands,
             ),
-            PackerHaulerState::ReturningToPackerWait => handle_moving(
-                &mut pos, &mut transform, &mut facing, &mut npc,
-                GridPos { x: 7, y: 5 }, PackerHaulerState::WaitingAtPacker, Some(Direction::Right),
-                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
-            ),
+            PackerHaulerState::ReturningToPackerWait => {
+                let target = targets.spawn;
+                handle_moving(
+                    &mut pos, &mut transform, &mut facing, &mut npc,
+                    target, PackerHaulerState::WaitingAtPacker, Some(Direction::Right),
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+                )
+            }
         }
         .unwrap_or(*state);
     }

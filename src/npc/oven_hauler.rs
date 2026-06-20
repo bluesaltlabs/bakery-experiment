@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::components::{
     Carrying, ConveyorBelt, Direction, Facing, GridPos, Item, Npc, OvenHaulerState,
-    Player, Solid, Station, StationKind, TableMarker,
+    OvenHaulerTargets, Player, Solid, Station, StationKind, TableMarker,
 };
 use super::movement;
 
@@ -67,7 +67,7 @@ pub fn oven_hauler_ai(
     time: Res<Time>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
-        &mut OvenHaulerState, &mut Transform,
+        &mut OvenHaulerState, &mut Transform, &OvenHaulerTargets,
     )>,
     mut station_query: Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
     station_pos_query: Query<&GridPos, (With<Station>, Without<Npc>)>,
@@ -78,15 +78,16 @@ pub fn oven_hauler_ai(
 ) {
     let dt = time.delta_seconds();
 
-    for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform) in npc_query.iter_mut() {
+    for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform, targets) in npc_query.iter_mut() {
         npc.move_timer -= dt;
         npc.action_timer -= dt;
 
         *state = match *state {
             OvenHaulerState::WaitingAtOven => {
+                let check_pos = targets.oven_pos();
                 if super::try_wait_for_station_output(
                     &mut npc, &mut station_query,
-                    GridPos { x: 4, y: 2 }, StationKind::Oven,
+                    check_pos, StationKind::Oven,
                 ) {
                     Some(OvenHaulerState::CollectingFromOven)
                 } else {
@@ -104,19 +105,25 @@ pub fn oven_hauler_ai(
                     None
                 }
             }
-            OvenHaulerState::MovingToPacker => handle_moving(
-                &mut pos, &mut transform, &mut facing, &mut npc,
-                GridPos { x: 8, y: 4 }, OvenHaulerState::InsertingToPacker, None,
-                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
-            ),
+            OvenHaulerState::MovingToPacker => {
+                let target = targets.packer_stand();
+                handle_moving(
+                    &mut pos, &mut transform, &mut facing, &mut npc,
+                    target, OvenHaulerState::InsertingToPacker, None,
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+                )
+            }
             OvenHaulerState::InsertingToPacker => handle_inserting_to_packer(
                 &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
             ),
-            OvenHaulerState::ReturningToOvenWait => handle_moving(
-                &mut pos, &mut transform, &mut facing, &mut npc,
-                GridPos { x: 5, y: 2 }, OvenHaulerState::WaitingAtOven, Some(Direction::Left),
-                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
-            ),
+            OvenHaulerState::ReturningToOvenWait => {
+                let target = targets.spawn;
+                handle_moving(
+                    &mut pos, &mut transform, &mut facing, &mut npc,
+                    target, OvenHaulerState::WaitingAtOven, Some(Direction::Left),
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+                )
+            }
         }
         .unwrap_or(*state);
     }

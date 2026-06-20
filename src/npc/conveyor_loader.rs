@@ -1,21 +1,23 @@
 use bevy::prelude::*;
 use crate::components::{
-    Carrying, ConveyorBelt, ConveyorLoaderState, Direction, Facing, FloorTimer,
-    GridPos, Item, ItemKind, Npc, Player, Solid, Station, StationKind, TableMarker,
+    Carrying, ConveyorBelt, ConveyorLoaderState, ConveyorLoaderTargets, Direction, Facing,
+    FloorTimer, GridPos, Item, ItemKind, Npc, Player, Solid, Station, StationKind, TableMarker,
 };
 use super::movement;
 
 fn handle_waiting_at_conveyor(
     npc: &mut Npc,
     facing: &mut Facing,
+    targets: &ConveyorLoaderTargets,
     item_on_ground_query: &Query<(Entity, &Item, &GridPos), (Without<Npc>, Without<Player>)>,
 ) -> Option<ConveyorLoaderState> {
     if npc.action_timer > 0.0 {
         return None;
     }
+    let check_pos = targets.item_check();
     let has_product = item_on_ground_query
         .iter()
-        .any(|(_, item, ip)| *ip == GridPos { x: 3, y: 4 } && item.kind == ItemKind::DoughBatch);
+        .any(|(_, item, ip)| *ip == check_pos && item.kind == ItemKind::DoughBatch);
     if has_product {
         facing.0 = Direction::Left;
         Some(ConveyorLoaderState::PickingUp)
@@ -30,6 +32,7 @@ fn handle_picking_up(
     pos: &GridPos,
     facing: &mut Facing,
     carrying: &mut Carrying,
+    targets: &ConveyorLoaderTargets,
     item_on_ground_query: &Query<(Entity, &Item, &GridPos), (Without<Npc>, Without<Player>)>,
     commands: &mut Commands,
 ) -> Option<ConveyorLoaderState> {
@@ -37,9 +40,10 @@ fn handle_picking_up(
         return None;
     }
     facing.0 = Direction::Left;
+    let check_pos = targets.item_check();
     let front_pos = GridPos { x: pos.x - 1, y: pos.y };
     for (item_entity, item, ip) in item_on_ground_query.iter() {
-        if *ip == front_pos && item.kind == ItemKind::DoughBatch {
+        if *ip == front_pos && *ip == check_pos && item.kind == ItemKind::DoughBatch {
             if carrying.0.is_none() {
                 commands.entity(item_entity).remove::<GridPos>();
                 commands.entity(item_entity).remove::<FloorTimer>();
@@ -140,7 +144,7 @@ pub fn conveyor_loader_ai(
     time: Res<Time>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
-        &mut ConveyorLoaderState, &mut Transform,
+        &mut ConveyorLoaderState, &mut Transform, &ConveyorLoaderTargets,
     )>,
     mut station_query: Query<(Entity, &mut Station, &GridPos), (Without<TableMarker>, Without<Npc>)>,
     item_on_ground_query: Query<(Entity, &Item, &GridPos), (Without<Npc>, Without<Player>)>,
@@ -152,29 +156,33 @@ pub fn conveyor_loader_ai(
 ) {
     let dt = time.delta_seconds();
 
-    for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform) in npc_query.iter_mut() {
+    for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform, targets) in npc_query.iter_mut() {
         npc.move_timer -= dt;
         npc.action_timer -= dt;
 
         *state = match *state {
             ConveyorLoaderState::WaitingAtConveyor => handle_waiting_at_conveyor(
-                &mut npc, &mut facing, &item_on_ground_query,
+                &mut npc, &mut facing, targets, &item_on_ground_query,
             ),
             ConveyorLoaderState::PickingUp => handle_picking_up(
-                &mut npc, &pos, &mut facing, &mut carrying, &item_on_ground_query, &mut commands,
+                &mut npc, &pos, &mut facing, &mut carrying, targets, &item_on_ground_query, &mut commands,
             ),
-            ConveyorLoaderState::MovingToFormer => handle_moving(
-                &mut pos, &mut transform, &mut facing, &mut npc,
-                GridPos { x: 4, y: 3 }, ConveyorLoaderState::InsertingToFormer, None,
-                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
-            ),
+            ConveyorLoaderState::MovingToFormer => {
+                let target = targets.operate_pos();
+                handle_moving(
+                    &mut pos, &mut transform, &mut facing, &mut npc,
+                    target, ConveyorLoaderState::InsertingToFormer, None,
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+                )
+            }
             ConveyorLoaderState::InsertingToFormer => handle_inserting_to_former(
                 &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
             ),
             ConveyorLoaderState::WaitingForFormer => {
+                let check_pos = targets.former_pos();
                 if super::try_wait_for_station_output(
                     &mut npc, &mut station_query,
-                    GridPos { x: 3, y: 3 }, StationKind::Former,
+                    check_pos, StationKind::Former,
                 ) {
                     Some(ConveyorLoaderState::CollectingFromFormer)
                 } else {
@@ -195,11 +203,14 @@ pub fn conveyor_loader_ai(
             ConveyorLoaderState::InsertingToOven => handle_inserting_to_oven(
                 &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
             ),
-            ConveyorLoaderState::ReturningToConveyor => handle_moving(
-                &mut pos, &mut transform, &mut facing, &mut npc,
-                GridPos { x: 4, y: 4 }, ConveyorLoaderState::WaitingAtConveyor, Some(Direction::Left),
-                &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
-            ),
+            ConveyorLoaderState::ReturningToConveyor => {
+                let target = targets.spawn;
+                handle_moving(
+                    &mut pos, &mut transform, &mut facing, &mut npc,
+                    target, ConveyorLoaderState::WaitingAtConveyor, Some(Direction::Left),
+                    &solid_query, &station_pos_query, &conveyor_pos_query, &player_query,
+                )
+            }
         }
         .unwrap_or(*state);
     }

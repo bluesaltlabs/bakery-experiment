@@ -2,6 +2,7 @@
 
 mod audio;
 mod components;
+mod editor;
 mod interaction;
 mod level;
 mod mobile;
@@ -16,9 +17,9 @@ use std::time::Duration;
 use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use components::{Direction, GridPos, Player};
+use components::{GridPos, Player};
 use mobile::{MobileInput, MobileOverlayVisible};
-use resources::ConveyorTimerResource;
+use resources::{ConveyorTimerResource, EditorMode, LevelData, SelectedTile};
 
 fn make_window() -> Window {
     Window {
@@ -67,7 +68,11 @@ fn main() {
         )))
         .insert_resource(MobileInput::default())
         .insert_resource(MobileOverlayVisible(true))
-        .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, spawn_npc_sys, setup_ui_sys, mobile::setup_mobile_overlay))
+        .insert_resource(LevelData::new())
+        .insert_resource(EditorMode(false))
+        .insert_resource(SelectedTile(1))
+        .insert_resource(editor::RebuildRequested(false))
+        .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, spawn_npc_sys, setup_ui_sys, mobile::setup_mobile_overlay, editor::setup_editor_ui, editor::setup_editor_cursor))
         .add_systems(
             Update,
             (
@@ -102,6 +107,20 @@ fn main() {
                 ui::show_game_over,
                 ui::handle_restart,
                 ui::keyboard_volume_control,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                editor::toggle_editor_mode,
+                editor::editor_camera_pan,
+                editor::update_editor_cursor,
+                editor::editor_place_tile,
+                editor::handle_palette_buttons,
+                editor::update_palette_highlight,
+                editor::update_palette_visibility,
+                editor::editor_palette_keyboard,
+                editor::rebuild_level,
             ),
         )
         .run();
@@ -173,43 +192,18 @@ fn camera_follow(
     camera.translation.y += (target.y - camera.translation.y) * t;
 }
 
-fn setup_level_sys(mut commands: Commands) {
-    level::setup_level(&mut commands);
+fn setup_level_sys(mut commands: Commands, level_data: Res<LevelData>) {
+    level::setup_level(&mut commands, &level_data);
 }
 
 fn spawn_player_sys(mut commands: Commands) {
     player::spawn_player(&mut commands);
 }
 
-fn spawn_npc_sys(mut commands: Commands) {
-    use bevy::color::Color;
-    crate::npc::spawn_conveyor_loader(
-        &mut commands,
-        GridPos { x: 4, y: 4 },
-        Color::srgb(1.0, 0.5, 0.0),
-        Color::srgb(1.0, 0.7, 0.3),
-        Direction::Left,
-        1.0,
-        0.5,
-    );
-    crate::npc::spawn_oven_hauler(
-        &mut commands,
-        GridPos { x: 5, y: 2 },
-        Color::srgb(0.2, 0.8, 0.5),
-        Color::srgb(0.4, 1.0, 0.6),
-        Direction::Left,
-        0.5,
-        0.25,
-    );
-    crate::npc::spawn_packer_hauler(
-        &mut commands,
-        GridPos { x: 7, y: 5 },
-        Color::srgb(0.3, 0.5, 0.9),
-        Color::srgb(0.5, 0.7, 1.0),
-        Direction::Right,
-        0.5,
-        0.25,
-    );
+fn spawn_npc_sys(mut commands: Commands, level_data: Res<LevelData>) {
+    for npc_data in &level_data.npcs {
+        crate::npc::spawn_npc_from_data(&mut commands, npc_data);
+    }
 }
 
 fn setup_ui_sys(mut commands: Commands) {

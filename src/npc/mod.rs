@@ -6,9 +6,9 @@ pub mod packer_hauler;
 use movement::*;
 use bevy::prelude::*;
 use crate::components::{
-    Carrying, ConveyorLoaderState, Direction, Facing, GameEntity, GridPos, Npc,
-    NpcDirectionIndicator, OvenHaulerState, PackerHaulerState, Station, StationKind,
-    TableMarker,
+    Carrying, ConveyorLoaderState, ConveyorLoaderTargets, Direction, Facing, GameEntity,
+    GridPos, Npc, NpcDirectionIndicator, NpcKind, OvenHaulerState, OvenHaulerTargets,
+    PackerHaulerState, PackerHaulerTargets, Station, StationKind, TableMarker,
 };
 use crate::level::{grid_to_world, spawn_item_entity, TILE_SIZE};
 
@@ -83,6 +83,7 @@ pub fn spawn_conveyor_loader(
 ) {
     let entity = spawn_npc(commands, pos, body_color, indicator_color, facing, move_cooldown, action_cooldown);
     commands.entity(entity).insert(ConveyorLoaderState::WaitingAtConveyor);
+    commands.entity(entity).insert(ConveyorLoaderTargets::new(pos));
 }
 
 pub fn spawn_oven_hauler(
@@ -96,6 +97,7 @@ pub fn spawn_oven_hauler(
 ) {
     let entity = spawn_npc(commands, pos, body_color, indicator_color, facing, move_cooldown, action_cooldown);
     commands.entity(entity).insert(OvenHaulerState::WaitingAtOven);
+    commands.entity(entity).insert(OvenHaulerTargets::new(pos));
 }
 
 pub fn spawn_packer_hauler(
@@ -109,6 +111,38 @@ pub fn spawn_packer_hauler(
 ) {
     let entity = spawn_npc(commands, pos, body_color, indicator_color, facing, move_cooldown, action_cooldown);
     commands.entity(entity).insert(PackerHaulerState::WaitingAtPacker);
+    commands.entity(entity).insert(PackerHaulerTargets::new(pos));
+}
+
+pub fn spawn_npc_from_data(commands: &mut Commands, data: &crate::resources::NpcSpawnData) {
+    let (body_color, indicator_color, move_cooldown, action_cooldown) = match data.kind {
+        NpcKind::ConveyorLoader => (
+            Color::srgb(1.0, 0.5, 0.0),
+            Color::srgb(1.0, 0.7, 0.3),
+            1.0, 0.5,
+        ),
+        NpcKind::OvenHauler => (
+            Color::srgb(0.2, 0.8, 0.5),
+            Color::srgb(0.4, 1.0, 0.6),
+            0.5, 0.25,
+        ),
+        NpcKind::PackerHauler => (
+            Color::srgb(0.3, 0.5, 0.9),
+            Color::srgb(0.5, 0.7, 1.0),
+            0.5, 0.25,
+        ),
+    };
+    match data.kind {
+        NpcKind::ConveyorLoader => {
+            spawn_conveyor_loader(commands, data.pos, body_color, indicator_color, data.facing, move_cooldown, action_cooldown);
+        }
+        NpcKind::OvenHauler => {
+            spawn_oven_hauler(commands, data.pos, body_color, indicator_color, data.facing, move_cooldown, action_cooldown);
+        }
+        NpcKind::PackerHauler => {
+            spawn_packer_hauler(commands, data.pos, body_color, indicator_color, data.facing, move_cooldown, action_cooldown);
+        }
+    }
 }
 
 pub(crate) fn try_wait_for_station_output(

@@ -224,4 +224,72 @@ pub enum PackerHaulerState {
     ReturningToPackerWait,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum NpcKind {
+    ConveyorLoader,
+    OvenHauler,
+    PackerHauler,
+}
+
+#[derive(Component)]
+pub struct ConveyorLoaderTargets {
+    pub spawn: GridPos,
+}
+
+impl ConveyorLoaderTargets {
+    pub fn new(spawn: GridPos) -> Self {
+        Self { spawn }
+    }
+
+    pub fn item_check(&self) -> GridPos {
+        GridPos { x: self.spawn.x - 1, y: self.spawn.y }
+    }
+
+    pub fn operate_pos(&self) -> GridPos {
+        GridPos { x: self.spawn.x, y: self.spawn.y - 1 }
+    }
+
+    pub fn former_pos(&self) -> GridPos {
+        GridPos { x: self.spawn.x - 1, y: self.spawn.y - 1 }
+    }
+}
+
+#[derive(Component)]
+pub struct OvenHaulerTargets {
+    pub spawn: GridPos,
+}
+
+impl OvenHaulerTargets {
+    pub fn new(spawn: GridPos) -> Self {
+        Self { spawn }
+    }
+
+    pub fn oven_pos(&self) -> GridPos {
+        GridPos { x: self.spawn.x - 1, y: self.spawn.y }
+    }
+
+    pub fn packer_stand(&self) -> GridPos {
+        GridPos { x: self.spawn.x + 3, y: self.spawn.y + 2 }
+    }
+}
+
+#[derive(Component)]
+pub struct PackerHaulerTargets {
+    pub spawn: GridPos,
+}
+
+impl PackerHaulerTargets {
+    pub fn new(spawn: GridPos) -> Self {
+        Self { spawn }
+    }
+
+    pub fn packer_pos(&self) -> GridPos {
+        GridPos { x: self.spawn.x + 1, y: self.spawn.y }
+    }
+
+    pub fn palletizer_stand(&self) -> GridPos {
+        GridPos { x: self.spawn.x, y: self.spawn.y - 4 }
+    }
+}
+
 

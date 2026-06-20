@@ -3,7 +3,7 @@ use crate::audio::AudioEvent;
 use crate::components::*;
 use crate::level::spawn_item_entity;
 use crate::mobile::MobileInput;
-use crate::resources::ShiftState;
+use crate::resources::{EditorMode, ShiftState};
 
 pub fn update_carried_items(
     carrier_query: Query<(&Carrying, &Transform), Without<Item>>,
@@ -148,6 +148,7 @@ fn try_ground_drop(
 }
 
 pub fn player_interaction(
+    editor: Res<EditorMode>,
     keys: Res<ButtonInput<KeyCode>>,
     mut shift: ResMut<ShiftState>,
     mut player_query: Query<(&GridPos, &Facing, &mut Carrying, &Transform), With<Player>>,
@@ -160,6 +161,9 @@ pub fn player_interaction(
     mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
     mut mobile_input: ResMut<MobileInput>,
 ) {
+    if editor.0 {
+        return;
+    }
     let interact = keys.just_pressed(KeyCode::KeyE) || keys.just_pressed(KeyCode::Space) || mobile_input.interact;
     mobile_input.interact = false;
     if !interact {

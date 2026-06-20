@@ -6,7 +6,10 @@ pub fn spawn_player(commands: &mut Commands) {
     let (gx, row) = PLAYER_START;
     let gy = (MAP_HEIGHT - 1 - row) as i32;
     let pos = GridPos { x: gx as i32, y: gy };
+    spawn_player_at(commands, pos);
+}
 
+pub fn spawn_player_at(commands: &mut Commands, pos: GridPos) {
     let world_pos = grid_to_world(pos);
 
     commands.spawn((

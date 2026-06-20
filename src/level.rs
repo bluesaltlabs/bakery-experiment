@@ -1,23 +1,23 @@
 use bevy::prelude::*;
 use crate::components::*;
 use crate::mobile::MobileInput;
-use crate::resources::GridVisible;
+use crate::resources::{GridVisible, LevelData};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: usize = 30;
 pub const MAP_HEIGHT: usize = 20;
-pub const PLAYER_START: (usize, usize) = (1, 18); // col 1, row 18 in LEVEL_DATA => grid (1, 1), bottom-left corner
+pub const PLAYER_START: (usize, usize) = (1, 18);
 
-const WALL: u8 = 1;
-const SOURCE: u8 = 2;
-const FORMER: u8 = 3;
-const OVEN: u8 = 4;
-const PACKER: u8 = 5;
-const PALLETIZER: u8 = 6;
-const TABLE: u8 = 7;
-const CONVEYOR: u8 = 8;
+pub const WALL: u8 = 1;
+pub const SOURCE: u8 = 2;
+pub const FORMER: u8 = 3;
+pub const OVEN: u8 = 4;
+pub const PACKER: u8 = 5;
+pub const PALLETIZER: u8 = 6;
+pub const TABLE: u8 = 7;
+pub const CONVEYOR: u8 = 8;
 
-const LEVEL_DATA: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
+pub const LEVEL_DATA: [[u8; MAP_WIDTH]; MAP_HEIGHT] = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -48,8 +48,8 @@ pub fn grid_to_world(pos: GridPos) -> Vec3 {
     )
 }
 
-pub fn setup_level(commands: &mut Commands) {
-    for (row, line) in LEVEL_DATA.iter().enumerate() {
+pub fn setup_level(commands: &mut Commands, level_data: &LevelData) {
+    for (row, line) in level_data.tiles.iter().enumerate() {
         for (col, &tile) in line.iter().enumerate() {
             let y = (MAP_HEIGHT - 1 - row) as i32;
             let x = col as i32;
@@ -91,7 +91,11 @@ pub fn setup_level(commands: &mut Commands) {
                     spawn_station(commands, pos, StationKind::Table);
                 }
                 CONVEYOR => {
-                    spawn_conveyor(commands, pos, crate::components::Direction::Down);
+                    let dir = level_data.conveyor_dirs
+                        .get(&(col, row))
+                        .copied()
+                        .unwrap_or(crate::components::Direction::Down);
+                    spawn_conveyor(commands, pos, dir);
                 }
                 _ => {
                     commands.spawn((

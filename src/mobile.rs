@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Item, Player, Station};
 use crate::level::{TILE_SIZE, MAP_WIDTH, MAP_HEIGHT};
-use crate::resources::ShiftState;
+use crate::resources::{EditorMode, ShiftState};
 
 const OVERLAY_WIDTH: f32 = 76.0;
 
@@ -47,6 +47,7 @@ pub struct MobileLeftButton;
 pub struct MobileRightButton;
 
 pub fn handle_tap_to_move(
+    editor: Res<EditorMode>,
     touches: Res<Touches>,
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
@@ -58,7 +59,7 @@ pub fn handle_tap_to_move(
     shift: Res<ShiftState>,
     mut mobile_input: ResMut<MobileInput>,
 ) {
-    if shift.game_over {
+    if editor.0 || shift.game_over {
         return;
     }
 
