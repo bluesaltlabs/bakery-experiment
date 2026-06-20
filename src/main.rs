@@ -128,9 +128,9 @@ fn adjust_camera_scale(
 
     let map_w = level::MAP_WIDTH as f32 * level::TILE_SIZE;
     let map_h = level::MAP_HEIGHT as f32 * level::TILE_SIZE;
-    let min_scale = 0.35;
+    let min_scale = 0.75;
 
-    let ideal_scale = (window.width() / map_w).min(window.height() / map_h) * 0.85;
+    let ideal_scale = (window.width() / map_w).min(window.height() / map_h) * min_scale;
     projection.scale = ideal_scale.clamp(min_scale, 1.0);
 }
 
