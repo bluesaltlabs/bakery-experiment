@@ -3,7 +3,7 @@ use crate::components::{ConveyorBelt, Direction, Facing, GridPos, Item, Player, 
 use crate::level::{TILE_SIZE, MAP_WIDTH, MAP_HEIGHT};
 use crate::resources::{EditorMode, ShiftState};
 
-const OVERLAY_WIDTH: f32 = 76.0;
+pub(crate) const OVERLAY_WIDTH: f32 = 76.0;
 
 #[derive(Resource, Default)]
 pub struct MobileInput {
@@ -11,6 +11,7 @@ pub struct MobileInput {
     pub interact: bool,
     pub restart: bool,
     pub toggle_grid: bool,
+    pub toggle_editor: bool,
 }
 
 #[derive(Resource)]
@@ -27,6 +28,9 @@ pub struct MobileRestartButton;
 
 #[derive(Component)]
 pub struct MobileGridButton;
+
+#[derive(Component)]
+pub struct MobileEditorButton;
 
 #[derive(Component)]
 pub struct MobileHideButton;
@@ -122,10 +126,11 @@ pub fn handle_overlay_buttons(
     interact_query: Query<&Interaction, (With<MobileInteractButton>, Changed<Interaction>)>,
     restart_query: Query<&Interaction, (With<MobileRestartButton>, Changed<Interaction>)>,
     grid_query: Query<&Interaction, (With<MobileGridButton>, Changed<Interaction>)>,
-    up_query: Query<&Interaction, With<MobileUpButton>>,
-    down_query: Query<&Interaction, With<MobileDownButton>>,
-    left_query: Query<&Interaction, With<MobileLeftButton>>,
-    right_query: Query<&Interaction, With<MobileRightButton>>,
+    editor_query: Query<&Interaction, (With<MobileEditorButton>, Changed<Interaction>)>,
+    up_query: Query<&Interaction, (With<MobileUpButton>, Changed<Interaction>)>,
+    down_query: Query<&Interaction, (With<MobileDownButton>, Changed<Interaction>)>,
+    left_query: Query<&Interaction, (With<MobileLeftButton>, Changed<Interaction>)>,
+    right_query: Query<&Interaction, (With<MobileRightButton>, Changed<Interaction>)>,
     mut mobile_input: ResMut<MobileInput>,
 ) {
     if interact_query.iter().any(|i| *i == Interaction::Pressed) {
@@ -136,6 +141,9 @@ pub fn handle_overlay_buttons(
     }
     if grid_query.iter().any(|i| *i == Interaction::Pressed) {
         mobile_input.toggle_grid = true;
+    }
+    if editor_query.iter().any(|i| *i == Interaction::Pressed) {
+        mobile_input.toggle_editor = true;
     }
 
     let up = up_query.iter().any(|i| *i == Interaction::Pressed);
@@ -236,6 +244,7 @@ pub fn setup_mobile_overlay(mut commands: Commands) {
                 row_gap: Val::Px(6.0),
                 ..default()
             },
+            background_color: BackgroundColor(Color::srgba(0.08, 0.08, 0.12, 0.45)),
             visibility: Visibility::Visible,
             ..default()
         },
@@ -371,6 +380,21 @@ pub fn setup_mobile_overlay(mut commands: Commands) {
         .with_children(|parent| {
             parent.spawn(TextBundle::from_section(
                 "G\nGrid",
+                text_style(),
+            ));
+        });
+
+        parent.spawn((
+            ButtonBundle {
+                style: button_style(),
+                background_color: bg(),
+                ..default()
+            },
+            MobileEditorButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "F2\nEdit",
                 text_style(),
             ));
         });

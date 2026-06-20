@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::input::mouse::MouseWheel;
 use crate::components::{Direction, GameEntity, GridPos, NpcKind, Player};
 use crate::level::{MAP_HEIGHT, MAP_WIDTH, TILE_SIZE, CONVEYOR, Z_EDITOR_CURSOR};
+use crate::mobile::{MobileInput, OVERLAY_WIDTH};
 use crate::resources::{EditorMode, LevelData, SelectedNpc, SelectedTile, UndoEntry, UndoStack};
 
 const PALETTE_WIDTH: f32 = 80.0;
@@ -154,11 +155,13 @@ pub fn setup_editor_cursor(mut commands: Commands) {
 
 pub fn toggle_editor_mode(
     keys: Res<ButtonInput<KeyCode>>,
+    mut mobile_input: ResMut<MobileInput>,
     mut editor: ResMut<EditorMode>,
     mut rebuild: ResMut<RebuildRequested>,
     mut undo_stack: ResMut<UndoStack>,
 ) {
-    if keys.just_pressed(KeyCode::F2) || keys.just_pressed(KeyCode::Backquote) {
+    if keys.just_pressed(KeyCode::F2) || keys.just_pressed(KeyCode::Backquote) || keys.just_pressed(KeyCode::Slash) || mobile_input.toggle_editor {
+        mobile_input.toggle_editor = false;
         editor.0 = !editor.0;
         if editor.0 {
             undo_stack.0.clear();
@@ -246,6 +249,10 @@ pub fn update_editor_cursor(
         *visibility = Visibility::Hidden;
         return;
     }
+    if cursor.x > window.width() - OVERLAY_WIDTH {
+        *visibility = Visibility::Hidden;
+        return;
+    }
 
     let Ok((camera, camera_transform)) = cameras.get_single() else { return };
     let Some(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor) else {
@@ -328,6 +335,9 @@ pub fn editor_place_tile(
     let Some(cursor) = window.cursor_position() else { return };
 
     if cursor.x < PALETTE_WIDTH {
+        return;
+    }
+    if cursor.x > window.width() - OVERLAY_WIDTH {
         return;
     }
 
