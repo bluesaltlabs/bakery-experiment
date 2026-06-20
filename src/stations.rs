@@ -2,13 +2,17 @@ use bevy::prelude::*;
 use crate::audio::AudioEvent;
 use crate::components::*;
 use crate::level::{grid_to_world, TILE_SIZE};
-use crate::resources::ConveyorTimerResource;
+use crate::resources::{ConveyorTimerResource, EditorMode};
 
 pub fn process_stations(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut station_query: Query<&mut Station>,
     mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
+    if editor.0 {
+        return;
+    }
     for mut station in station_query.iter_mut() {
         if station.kind == StationKind::Source && !station.has_output {
             station.spawn_timer += time.delta_seconds();
@@ -31,6 +35,7 @@ pub fn process_stations(
 }
 
 pub fn process_conveyors(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut conveyor_timer: ResMut<ConveyorTimerResource>,
     conveyor_query: Query<(&ConveyorBelt, &GridPos), Without<Item>>,
@@ -43,6 +48,9 @@ pub fn process_conveyors(
     mut commands: Commands,
     mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
 ) {
+    if editor.0 {
+        return;
+    }
     conveyor_timer.0.tick(time.delta());
     if !conveyor_timer.0.finished() {
         return;
@@ -115,10 +123,14 @@ pub fn update_station_labels(
     }
 }
 pub fn tick_floor_timers(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut commands: Commands,
     mut item_query: Query<(Entity, &mut FloorTimer)>,
 ) {
+    if editor.0 {
+        return;
+    }
     for (entity, mut timer) in item_query.iter_mut() {
         timer.0 -= time.delta_seconds();
         if timer.0 <= 0.0 {

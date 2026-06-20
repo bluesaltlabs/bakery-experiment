@@ -19,7 +19,7 @@ use bevy::prelude::*;
 use wasm_bindgen::prelude::*;
 use components::{GridPos, Player};
 use mobile::{MobileInput, MobileOverlayVisible};
-use resources::{ConveyorTimerResource, EditorMode, LevelData, SelectedTile};
+use resources::{ConveyorTimerResource, EditorMode, LevelData, SelectedNpc, SelectedTile, UndoStack};
 
 fn make_window() -> Window {
     Window {
@@ -71,6 +71,8 @@ fn main() {
         .insert_resource(LevelData::new())
         .insert_resource(EditorMode(false))
         .insert_resource(SelectedTile(1))
+        .insert_resource(SelectedNpc::default())
+        .insert_resource(UndoStack::default())
         .insert_resource(editor::RebuildRequested(false))
         .add_systems(Startup, (setup_camera, setup_level_sys, spawn_player_sys, spawn_npc_sys, setup_ui_sys, mobile::setup_mobile_overlay, editor::setup_editor_ui, editor::setup_editor_cursor))
         .add_systems(
@@ -114,9 +116,12 @@ fn main() {
             (
                 editor::toggle_editor_mode,
                 editor::editor_camera_pan,
+                editor::editor_scroll_zoom,
                 editor::update_editor_cursor,
                 editor::editor_place_tile,
+                editor::editor_undo,
                 editor::handle_palette_buttons,
+                editor::handle_editor_save_load,
                 editor::update_palette_highlight,
                 editor::update_palette_visibility,
                 editor::editor_palette_keyboard,
@@ -139,9 +144,13 @@ fn setup_camera(mut commands: Commands) {
 }
 
 fn adjust_camera_scale(
+    editor: Res<EditorMode>,
     windows: Query<&Window>,
     mut camera_query: Query<&mut OrthographicProjection, With<Camera>>,
 ) {
+    if editor.0 {
+        return;
+    }
     let Ok(window) = windows.get_single() else { return };
     let Ok(mut projection) = camera_query.get_single_mut() else { return };
 
@@ -154,10 +163,14 @@ fn adjust_camera_scale(
 }
 
 fn camera_follow(
+    editor: Res<EditorMode>,
     player_query: Query<&Transform, With<Player>>,
     mut camera_query: Query<(&mut Transform, &OrthographicProjection), (With<Camera>, Without<Player>)>,
     time: Res<Time>,
 ) {
+    if editor.0 {
+        return;
+    }
     let Ok(player) = player_query.get_single() else { return };
     let Ok((mut camera, projection)) = camera_query.get_single_mut() else { return };
 

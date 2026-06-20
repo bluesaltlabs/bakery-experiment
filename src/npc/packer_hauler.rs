@@ -3,7 +3,7 @@ use crate::components::{
     Carrying, ConveyorBelt, Direction, Facing, GridPos, Item, ItemKind, Npc,
     PackerHaulerState, PackerHaulerTargets, Player, Solid, Station, StationKind, TableMarker,
 };
-use crate::resources::ShiftState;
+use crate::resources::{EditorMode, ShiftState};
 use super::movement;
 
 fn handle_moving(
@@ -58,6 +58,7 @@ fn handle_inserting_to_palletizer(
 }
 
 pub fn packer_hauler_ai(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut shift: ResMut<ShiftState>,
     mut npc_query: Query<(
@@ -71,7 +72,7 @@ pub fn packer_hauler_ai(
     player_query: Query<&GridPos, (With<Player>, Without<Npc>)>,
     mut commands: Commands,
 ) {
-    if shift.game_over {
+    if editor.0 || shift.game_over {
         return;
     }
 

@@ -3,6 +3,7 @@ use crate::components::{
     Carrying, ConveyorBelt, Direction, Facing, GridPos, Item, Npc, OvenHaulerState,
     OvenHaulerTargets, Player, Solid, Station, StationKind, TableMarker,
 };
+use crate::resources::EditorMode;
 use super::movement;
 
 fn handle_moving(
@@ -64,6 +65,7 @@ fn handle_inserting_to_packer(
 }
 
 pub fn oven_hauler_ai(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
@@ -76,6 +78,9 @@ pub fn oven_hauler_ai(
     player_query: Query<&GridPos, (With<Player>, Without<Npc>)>,
     mut commands: Commands,
 ) {
+    if editor.0 {
+        return;
+    }
     let dt = time.delta_seconds();
 
     for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform, targets) in npc_query.iter_mut() {

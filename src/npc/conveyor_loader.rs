@@ -3,6 +3,7 @@ use crate::components::{
     Carrying, ConveyorBelt, ConveyorLoaderState, ConveyorLoaderTargets, Direction, Facing,
     FloorTimer, GridPos, Item, ItemKind, Npc, Player, Solid, Station, StationKind, TableMarker,
 };
+use crate::resources::EditorMode;
 use super::movement;
 
 fn handle_waiting_at_conveyor(
@@ -141,6 +142,7 @@ fn handle_inserting_to_oven(
 }
 
 pub fn conveyor_loader_ai(
+    editor: Res<EditorMode>,
     time: Res<Time>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
@@ -154,6 +156,9 @@ pub fn conveyor_loader_ai(
     player_query: Query<&GridPos, (With<Player>, Without<Npc>)>,
     mut commands: Commands,
 ) {
+    if editor.0 {
+        return;
+    }
     let dt = time.delta_seconds();
 
     for (mut pos, mut facing, mut carrying, mut npc, mut state, mut transform, targets) in npc_query.iter_mut() {

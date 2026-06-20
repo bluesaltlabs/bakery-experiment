@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct GridPos {
     pub x: i32,
     pub y: i32,
@@ -15,7 +15,7 @@ pub struct Player;
 #[derive(Component)]
 pub struct Facing(pub Direction);
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum Direction {
     Up,
     Down,
@@ -224,7 +224,7 @@ pub enum PackerHaulerState {
     ReturningToPackerWait,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum NpcKind {
     ConveyorLoader,
     OvenHauler,

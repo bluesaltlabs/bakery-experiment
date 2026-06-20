@@ -1,7 +1,8 @@
 use bevy::prelude::*;
-use crate::components::{GameEntity, GridPos, Player};
-use crate::level::{MAP_HEIGHT, MAP_WIDTH, TILE_SIZE};
-use crate::resources::{EditorMode, LevelData, SelectedTile};
+use bevy::input::mouse::MouseWheel;
+use crate::components::{Direction, GameEntity, GridPos, NpcKind, Player};
+use crate::level::{MAP_HEIGHT, MAP_WIDTH, TILE_SIZE, CONVEYOR};
+use crate::resources::{EditorMode, LevelData, SelectedNpc, SelectedTile, UndoEntry, UndoStack};
 
 const PALETTE_WIDTH: f32 = 80.0;
 
@@ -13,6 +14,18 @@ pub struct EditorPaletteRoot;
 
 #[derive(Component)]
 pub struct TileButton(pub u8, pub Color);
+
+#[derive(Component)]
+pub struct NpcPaletteButton(pub NpcKind, pub Color);
+
+#[derive(Component)]
+pub struct EditorSaveButton;
+
+#[derive(Component)]
+pub struct EditorLoadButton;
+
+#[derive(Component)]
+pub struct EditorResetButton;
 
 #[derive(Component)]
 pub struct EditorCursor;
@@ -27,6 +40,12 @@ const TILE_INFO: &[(u8, &str, (f32, f32, f32))] = &[
     (6, "Pall", (0.8, 0.2, 0.8)),
     (7, "Tbl", (0.6, 0.4, 0.2)),
     (8, "Conv", (0.25, 0.35, 0.45)),
+];
+
+const NPC_INFO: &[(NpcKind, &str, (f32, f32, f32))] = &[
+    (NpcKind::ConveyorLoader, "CL", (1.0, 0.5, 0.0)),
+    (NpcKind::OvenHauler, "OH", (0.2, 0.8, 0.5)),
+    (NpcKind::PackerHauler, "PH", (0.3, 0.5, 0.9)),
 ];
 
 pub fn setup_editor_ui(mut commands: Commands) {
@@ -92,6 +111,123 @@ pub fn setup_editor_ui(mut commands: Commands) {
                 ));
             });
         }
+
+        parent.spawn((
+            TextBundle::from_section(
+                "NPCs",
+                TextStyle {
+                    font_size: 12.0,
+                    color: Color::srgb(0.7, 0.7, 0.7),
+                    ..default()
+                },
+            ),
+        ));
+        for &(kind, label, (r, g, b)) in NPC_INFO {
+            let color = Color::srgb(r, g, b);
+            parent.spawn((
+                ButtonBundle {
+                    style: Style {
+                        width: Val::Px(PALETTE_WIDTH - 8.0),
+                        height: Val::Px(28.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border: UiRect::all(Val::Px(1.0)),
+                        ..default()
+                    },
+                    background_color: BackgroundColor(color),
+                    ..default()
+                },
+                NpcPaletteButton(kind, color),
+            ))
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    label,
+                    TextStyle {
+                        font_size: 10.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                ));
+            });
+        }
+
+        parent.spawn((
+            ButtonBundle {
+                style: Style {
+                    width: Val::Px(PALETTE_WIDTH - 8.0),
+                    height: Val::Px(28.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                background_color: BackgroundColor(Color::srgb(0.15, 0.5, 0.15)),
+                ..default()
+            },
+            EditorSaveButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Save",
+                TextStyle {
+                    font_size: 10.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
+
+        parent.spawn((
+            ButtonBundle {
+                style: Style {
+                    width: Val::Px(PALETTE_WIDTH - 8.0),
+                    height: Val::Px(28.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                background_color: BackgroundColor(Color::srgb(0.5, 0.3, 0.15)),
+                ..default()
+            },
+            EditorLoadButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Load",
+                TextStyle {
+                    font_size: 10.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
+
+        parent.spawn((
+            ButtonBundle {
+                style: Style {
+                    width: Val::Px(PALETTE_WIDTH - 8.0),
+                    height: Val::Px(28.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border: UiRect::all(Val::Px(1.0)),
+                    ..default()
+                },
+                background_color: BackgroundColor(Color::srgb(0.6, 0.2, 0.2)),
+                ..default()
+            },
+            EditorResetButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Reset",
+                TextStyle {
+                    font_size: 10.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
     });
 }
 
@@ -115,10 +251,13 @@ pub fn toggle_editor_mode(
     keys: Res<ButtonInput<KeyCode>>,
     mut editor: ResMut<EditorMode>,
     mut rebuild: ResMut<RebuildRequested>,
+    mut undo_stack: ResMut<UndoStack>,
 ) {
     if keys.just_pressed(KeyCode::F2) || keys.just_pressed(KeyCode::Backquote) {
         editor.0 = !editor.0;
-        if !editor.0 {
+        if editor.0 {
+            undo_stack.0.clear();
+        } else {
             rebuild.0 = true;
         }
     }
@@ -161,6 +300,21 @@ pub fn editor_camera_pan(
             transform.translation.x += dx * speed * dt;
             transform.translation.y += dy * speed * dt;
         }
+    }
+}
+
+pub fn editor_scroll_zoom(
+    editor: Res<EditorMode>,
+    mut scroll_events: EventReader<MouseWheel>,
+    mut camera_query: Query<&mut OrthographicProjection, With<Camera>>,
+) {
+    if !editor.0 {
+        return;
+    }
+    let Ok(mut projection) = camera_query.get_single_mut() else { return };
+    for event in scroll_events.read() {
+        let delta = -event.y * 0.02;
+        projection.scale = (projection.scale + delta).clamp(0.3, 3.0);
     }
 }
 
@@ -216,19 +370,52 @@ fn screen_to_grid(
     }
 }
 
+fn find_safe_spawn(tiles: &[[u8; MAP_WIDTH]; MAP_HEIGHT]) -> GridPos {
+    let start_row = 18usize;
+    let start_col = 1usize;
+    if start_row < MAP_HEIGHT && start_col < MAP_WIDTH
+        && tiles[start_row][start_col] != 1
+    {
+        return GridPos { x: start_col as i32, y: (MAP_HEIGHT as i32 - 1 - start_row as i32) };
+    }
+    for row in 0..MAP_HEIGHT {
+        for col in 0..MAP_WIDTH {
+            if tiles[row][col] == 0 {
+                return GridPos { x: col as i32, y: (MAP_HEIGHT as i32 - 1 - row as i32) };
+            }
+        }
+    }
+    GridPos { x: 1, y: 1 }
+}
+
+fn cycle_direction(dir: &Direction) -> Direction {
+    match dir {
+        Direction::Up => Direction::Right,
+        Direction::Right => Direction::Down,
+        Direction::Down => Direction::Left,
+        Direction::Left => Direction::Up,
+    }
+}
+
 pub fn editor_place_tile(
     editor: Res<EditorMode>,
+    keys: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
     selected: Res<SelectedTile>,
+    selected_npc: Res<SelectedNpc>,
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     mut level_data: ResMut<LevelData>,
     mut rebuild: ResMut<RebuildRequested>,
+    mut undo_stack: ResMut<UndoStack>,
 ) {
     if !editor.0 {
         return;
     }
-    if !mouse.just_pressed(MouseButton::Left) {
+
+    let left = mouse.just_pressed(MouseButton::Left);
+    let right = mouse.just_pressed(MouseButton::Right);
+    if !left && !right {
         return;
     }
 
@@ -244,32 +431,203 @@ pub fn editor_place_tile(
 
     let row = (MAP_HEIGHT as i32 - 1 - gy) as usize;
     let col = gx as usize;
+    let pos = GridPos { x: gx, y: gy };
+
+    if let Some(npc_kind) = selected_npc.0 {
+        let already_exists = level_data.npcs.iter().any(|n| n.pos == pos);
+        if left && already_exists {
+            level_data.npcs.retain(|n| n.pos != pos);
+            rebuild.0 = true;
+        } else if left {
+            level_data.npcs.push(crate::resources::NpcSpawnData {
+                kind: npc_kind,
+                pos,
+                facing: Direction::Down,
+            });
+            rebuild.0 = true;
+        } else if right && already_exists {
+            level_data.npcs.retain(|n| n.pos != pos);
+            rebuild.0 = true;
+        }
+        return;
+    }
+
+    if right {
+        let erased_npc = level_data.npcs.iter().any(|n| n.pos == pos);
+        if erased_npc {
+            level_data.npcs.retain(|n| n.pos != pos);
+            rebuild.0 = true;
+            return;
+        }
+        let old_tile = level_data.tiles[row][col];
+        if old_tile != 0 || selected.0 != 0 {
+            undo_stack.0.push(UndoEntry { row, col, old_tile, old_dir: None });
+        }
+        level_data.tiles[row][col] = 0;
+        level_data.conveyor_dirs.remove(&(col, row));
+        rebuild.0 = true;
+        return;
+    }
+
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    let old_tile = level_data.tiles[row][col];
+
+    if shift && old_tile == CONVEYOR {
+        let dir = level_data.conveyor_dirs
+            .entry((col, row))
+            .or_insert(Direction::Down);
+        *dir = cycle_direction(dir);
+        rebuild.0 = true;
+        return;
+    }
+
+    if old_tile != selected.0 {
+        undo_stack.0.push(UndoEntry {
+            row, col, old_tile,
+            old_dir: if old_tile == CONVEYOR { level_data.conveyor_dirs.get(&(col, row)).copied() } else { None },
+        });
+        if undo_stack.0.len() > 100 {
+            undo_stack.0.remove(0);
+        }
+    }
 
     level_data.tiles[row][col] = selected.0;
+
+    if selected.0 == CONVEYOR {
+        level_data.conveyor_dirs.entry((col, row)).or_insert(Direction::Down);
+    } else {
+        level_data.conveyor_dirs.remove(&(col, row));
+    }
+
     rebuild.0 = true;
 }
 
-pub fn handle_palette_buttons(
-    mut selected: ResMut<SelectedTile>,
-    buttons: Query<(&Interaction, &TileButton), Changed<Interaction>>,
+pub fn editor_undo(
+    editor: Res<EditorMode>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut level_data: ResMut<LevelData>,
+    mut undo_stack: ResMut<UndoStack>,
+    mut rebuild: ResMut<RebuildRequested>,
 ) {
-    for (interaction, button) in buttons.iter() {
-        if *interaction == Interaction::Pressed {
-            selected.0 = button.0;
+    if !editor.0 {
+        return;
+    }
+    if keys.just_pressed(KeyCode::KeyZ) && (keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight)) {
+        if let Some(entry) = undo_stack.0.pop() {
+            level_data.tiles[entry.row][entry.col] = entry.old_tile;
+            match entry.old_dir {
+                Some(dir) => { level_data.conveyor_dirs.insert((entry.col, entry.row), dir); }
+                None => { level_data.conveyor_dirs.remove(&(entry.col, entry.row)); }
+            }
+            rebuild.0 = true;
         }
     }
 }
 
-pub fn update_palette_highlight(
-    selected: Res<SelectedTile>,
-    mut buttons: Query<(&TileButton, &mut BackgroundColor)>,
+pub fn handle_palette_buttons(
+    mut selected_tile: ResMut<SelectedTile>,
+    mut selected_npc: ResMut<SelectedNpc>,
+    tile_buttons: Query<(&Interaction, &TileButton), Changed<Interaction>>,
+    npc_buttons: Query<(&Interaction, &NpcPaletteButton), Changed<Interaction>>,
 ) {
-    for (button, mut bg) in buttons.iter_mut() {
-        if button.0 == selected.0 {
-            bg.0 = Color::WHITE;
-        } else {
-            bg.0 = button.1;
+    for (interaction, button) in tile_buttons.iter() {
+        if *interaction == Interaction::Pressed {
+            selected_tile.0 = button.0;
+            selected_npc.0 = None;
         }
+    }
+    for (interaction, button) in npc_buttons.iter() {
+        if *interaction == Interaction::Pressed {
+            selected_npc.0 = Some(button.0);
+            selected_tile.0 = 0;
+        }
+    }
+}
+
+pub fn handle_editor_save_load(
+    save_buttons: Query<&Interaction, (With<EditorSaveButton>, Changed<Interaction>)>,
+    load_buttons: Query<&Interaction, (With<EditorLoadButton>, Changed<Interaction>)>,
+    reset_buttons: Query<&Interaction, (With<EditorResetButton>, Changed<Interaction>)>,
+    mut level_data: ResMut<LevelData>,
+    mut rebuild: ResMut<RebuildRequested>,
+) {
+    if save_buttons.iter().any(|i| *i == Interaction::Pressed) {
+        save_level(&level_data);
+    }
+    if load_buttons.iter().any(|i| *i == Interaction::Pressed) {
+        if let Some(loaded) = load_level() {
+            *level_data = loaded;
+            rebuild.0 = true;
+        }
+    }
+    if reset_buttons.iter().any(|i| *i == Interaction::Pressed) {
+        delete_save();
+        *level_data = LevelData::default_level();
+        rebuild.0 = true;
+    }
+}
+
+fn save_level(level_data: &LevelData) {
+    let json = serde_json::to_string_pretty(level_data).unwrap();
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            let _ = window.local_storage().ok().flatten().map(|s| s.set_item("bakery_level", &json));
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = std::fs::write("bakery_level.json", &json);
+    }
+}
+
+fn load_level() -> Option<LevelData> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let json = web_sys::window()?
+            .local_storage().ok()??
+            .get_item("bakery_level").ok()??;
+        serde_json::from_str(&json).ok()
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let json = std::fs::read_to_string("bakery_level.json").ok()?;
+        serde_json::from_str(&json).ok()
+    }
+}
+
+fn delete_save() {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(window) = web_sys::window() {
+            let _ = window.local_storage().ok().flatten().map(|s| s.remove_item("bakery_level"));
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = std::fs::remove_file("bakery_level.json");
+    }
+}
+
+pub fn update_palette_highlight(
+    selected_tile: Res<SelectedTile>,
+    selected_npc: Res<SelectedNpc>,
+    mut tile_buttons: Query<(&TileButton, &mut BackgroundColor), Without<NpcPaletteButton>>,
+    mut npc_buttons: Query<(&NpcPaletteButton, &mut BackgroundColor)>,
+) {
+    for (button, mut bg) in tile_buttons.iter_mut() {
+        bg.0 = if button.0 == selected_tile.0 && selected_npc.0.is_none() {
+            Color::WHITE
+        } else {
+            button.1
+        };
+    }
+    for (button, mut bg) in npc_buttons.iter_mut() {
+        bg.0 = if selected_npc.0 == Some(button.0) {
+            Color::WHITE
+        } else {
+            button.1
+        };
     }
 }
 
@@ -290,28 +648,47 @@ pub fn editor_palette_keyboard(
     editor: Res<EditorMode>,
     keys: Res<ButtonInput<KeyCode>>,
     mut selected: ResMut<SelectedTile>,
+    mut selected_npc: ResMut<SelectedNpc>,
 ) {
     if !editor.0 {
         return;
     }
     if keys.just_pressed(KeyCode::Digit0) {
         selected.0 = 0;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit1) {
         selected.0 = 1;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit2) {
         selected.0 = 2;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit3) {
         selected.0 = 3;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit4) {
         selected.0 = 4;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit5) {
         selected.0 = 5;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit6) {
         selected.0 = 6;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit7) {
         selected.0 = 7;
+        selected_npc.0 = None;
     } else if keys.just_pressed(KeyCode::Digit8) {
         selected.0 = 8;
+        selected_npc.0 = None;
+    } else if keys.just_pressed(KeyCode::F9) {
+        selected_npc.0 = Some(NpcKind::ConveyorLoader);
+        selected.0 = 0;
+    } else if keys.just_pressed(KeyCode::F10) {
+        selected_npc.0 = Some(NpcKind::OvenHauler);
+        selected.0 = 0;
+    } else if keys.just_pressed(KeyCode::F11) {
+        selected_npc.0 = Some(NpcKind::PackerHauler);
+        selected.0 = 0;
     }
 }
 
@@ -332,13 +709,26 @@ pub fn rebuild_level(
         .copied()
         .unwrap_or(GridPos { x: 1, y: 1 });
 
+    let row = (MAP_HEIGHT as i32 - 1 - player_pos.y) as usize;
+    let col = player_pos.x as usize;
+    let is_blocked = if row < MAP_HEIGHT && col < MAP_WIDTH {
+        level_data.tiles[row][col] == 1 || level_data.tiles[row][col] == CONVEYOR
+    } else {
+        false
+    };
+    let safe_player_pos = if is_blocked {
+        find_safe_spawn(&level_data.tiles)
+    } else {
+        player_pos
+    };
+
     let entities: Vec<Entity> = game_entities.iter().collect();
     for entity in entities {
         commands.entity(entity).despawn();
     }
 
     crate::level::setup_level(&mut commands, &level_data);
-    crate::player::spawn_player_at(&mut commands, player_pos);
+    crate::player::spawn_player_at(&mut commands, safe_player_pos);
     for npc_data in &level_data.npcs {
         crate::npc::spawn_npc_from_data(&mut commands, npc_data);
     }
