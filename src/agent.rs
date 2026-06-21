@@ -36,7 +36,7 @@ pub fn spawn_indicator(
 }
 
 pub fn update_direction_indicators(
-    parent_query: Query<(Entity, &Transform, &Facing), Or<(With<Player>, With<Npc>)>>,
+    parent_query: Query<(Entity, &Transform, &Facing), (Or<(With<Player>, With<Npc>)>, Without<DirectionIndicator>)>,
     mut indicator_query: Query<(&DirectionIndicator, &mut Transform, &mut Sprite)>,
 ) {
     for (parent_entity, parent_transform, facing) in parent_query.iter() {
