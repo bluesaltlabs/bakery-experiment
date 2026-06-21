@@ -4,6 +4,7 @@ use crate::components::{
     FloorTimer, GridPos, Item, ItemKind, Npc, Player, Solid, Station, StationKind, TableMarker,
 };
 use crate::resources::EditorMode;
+use crate::station_config::StationConfig;
 use super::movement;
 
 fn handle_waiting_at_conveyor(
@@ -120,6 +121,7 @@ fn handle_inserting_to_oven(
 
 pub fn conveyor_loader_ai(
     editor: Res<EditorMode>,
+    config: Res<StationConfig>,
     time: Res<Time>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
@@ -173,7 +175,7 @@ pub fn conveyor_loader_ai(
             }
             ConveyorLoaderState::CollectingFromFormer => {
                 if super::try_collect_from_station(
-                    &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
+                    &config, &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
                     &transform, &mut commands,
                     Direction::Left, (-1, 0), StationKind::Former,
                 ) {

@@ -4,6 +4,7 @@ use crate::components::*;
 use crate::level::*;
 use crate::mobile::MobileInput;
 use crate::resources::{EditorMode, GridVisible, LevelData, ShiftState};
+use crate::station_config::{StationBehavior, StationConfig};
 
 pub fn update_game_state(
     editor: Res<EditorMode>,
@@ -44,6 +45,7 @@ pub fn handle_restart(
     mut mobile_input: ResMut<MobileInput>,
     mut shift: ResMut<ShiftState>,
     mut grid_visible: ResMut<GridVisible>,
+    station_config: Res<StationConfig>,
     game_entities: Query<Entity, With<GameEntity>>,
     level_data: Res<LevelData>,
     mut commands: Commands,
@@ -60,7 +62,7 @@ pub fn handle_restart(
 
     *shift = ShiftState::new();
     grid_visible.0 = true;
-    setup_level(&mut commands, &level_data);
+    setup_level(&mut commands, &level_data, &station_config);
     crate::player::spawn_player(&mut commands);
     for npc_data in &level_data.npcs {
         crate::npc::spawn_npc_from_data(&mut commands, npc_data);
@@ -156,6 +158,7 @@ pub fn keyboard_volume_control(
 
 pub fn update_ui(
     shift: Res<ShiftState>,
+    config: Res<StationConfig>,
     player_query: Query<&Carrying, With<Player>>,
     mut text_query: Query<&mut Text, With<HudText>>,
     station_query: Query<&Station>,
@@ -196,10 +199,11 @@ pub fn update_ui(
 
         let mut debug = String::from("\n\nStations:");
         for station in stations {
+            let def = config.def(station.kind);
             let pct = if station.busy {
-                (station.timer / station.process_duration * 100.0) as u32
-            } else if station.kind == StationKind::Source {
-                (station.spawn_timer / station.spawn_interval * 100.0) as u32
+                (station.timer / def.process_duration * 100.0) as u32
+            } else if def.behavior == StationBehavior::Source {
+                (station.spawn_timer / def.spawn_interval * 100.0) as u32
             } else {
                 0
             };
@@ -214,16 +218,16 @@ pub fn update_ui(
             };
             debug.push_str(&format!(
                 "\n  {}: {}",
-                station.kind.label(),
+                def.label,
                 status,
             ));
             if station.busy {
                 debug.push_str(&format!(" ({}%)", pct));
-            } else if station.kind == StationKind::Source && pct > 0 {
+            } else if def.behavior == StationBehavior::Source && pct > 0 {
                 debug.push_str(&format!(" ({}%)", pct));
             }
             if station.kind == StationKind::Packer && station.packer_count > 0 {
-                debug.push_str(&format!(" {}/{}", station.packer_count, station.inputs_needed));
+                debug.push_str(&format!(" {}/{}", station.packer_count, def.inputs_needed));
             }
         }
         text.sections[4].value = debug;

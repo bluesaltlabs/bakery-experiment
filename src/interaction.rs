@@ -4,6 +4,7 @@ use crate::components::*;
 use crate::level::{spawn_item_entity, Z_CARRIED_ITEM};
 use crate::mobile::MobileInput;
 use crate::resources::{EditorMode, ShiftState};
+use crate::station_config::StationConfig;
 
 pub fn update_carried_items(
     carrier_query: Query<(&Carrying, &Transform), Without<Item>>,
@@ -43,6 +44,7 @@ fn try_table_interaction(
 }
 
 fn try_station_deposit(
+    config: &StationConfig,
     commands: &mut Commands,
     shift: &mut ShiftState,
     carrying: &mut Carrying,
@@ -56,8 +58,9 @@ fn try_station_deposit(
         return true;
     }
 
+    let def = config.def(station.kind);
     if station.kind != StationKind::Source
-        && carried_kind == station.accepted_kind
+        && carried_kind == def.accepted_kind
         && !station.busy
         && !station.has_output
     {
@@ -65,7 +68,7 @@ fn try_station_deposit(
 
         if station.kind == StationKind::Packer {
             station.packer_count += 1;
-            if station.packer_count >= 3 {
+            if station.packer_count >= def.inputs_needed {
                 station.busy = true;
                 station.timer = 0.0;
                 station.packer_count = 0;
@@ -149,6 +152,7 @@ fn try_ground_drop(
 
 pub fn player_interaction(
     editor: Res<EditorMode>,
+    config: Res<StationConfig>,
     keys: Res<ButtonInput<KeyCode>>,
     mut shift: ResMut<ShiftState>,
     mut player_query: Query<(&GridPos, &Facing, &mut Carrying, &Transform), With<Player>>,
@@ -189,7 +193,7 @@ pub fn player_interaction(
         if *station_pos != front_pos {
             continue;
         }
-        if try_station_deposit(&mut commands, &mut shift, &mut carrying, &mut station) {
+        if try_station_deposit(&config, &mut commands, &mut shift, &mut carrying, &mut station) {
             audio_queue.0.push(AudioEvent::StationDeposit);
             return;
         }

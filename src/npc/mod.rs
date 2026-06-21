@@ -4,12 +4,14 @@ pub mod oven_hauler;
 pub mod packer_hauler;
 
 use bevy::prelude::*;
+use crate::agent;
 use crate::components::{
     Carrying, ConveyorLoaderState, ConveyorLoaderTargets, Direction, Facing, GameEntity,
-    GridPos, Npc, NpcDirectionIndicator, NpcKind, OvenHaulerState, OvenHaulerTargets,
+    GridPos, Npc, NpcKind, OvenHaulerState, OvenHaulerTargets,
     PackerHaulerState, PackerHaulerTargets, Station, StationKind, TableMarker,
 };
-use crate::level::{grid_to_world, spawn_item_entity, TILE_SIZE, Z_NPC, Z_PLAYER_INDICATOR, INDICATOR_HALF, INDICATOR_BAR_HALF};
+use crate::level::{grid_to_world, TILE_SIZE, Z_NPC};
+use crate::station_config::StationConfig;
 
 pub fn spawn_npc(
     commands: &mut Commands,
@@ -37,36 +39,22 @@ pub fn spawn_npc(
                 )),
                 ..default()
             },
-            pos,
-            Facing(facing),
-            Carrying::empty(),
+            agent::AgentBundle {
+                grid_pos: pos,
+                facing: Facing(facing),
+                carrying: Carrying::empty(),
+                game_entity: GameEntity,
+            },
             Npc {
                 move_timer: 0.0,
                 action_timer: 0.0,
                 move_cooldown,
                 action_cooldown,
             },
-            GameEntity,
         ))
         .id();
 
-    commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: indicator_color,
-                custom_size: Some(Vec2::new(TILE_SIZE * 0.7, TILE_SIZE * 0.15)),
-                ..default()
-            },
-            transform: Transform::from_translation(Vec3::new(
-                world_pos.x,
-                world_pos.y + TILE_SIZE * 0.35 - TILE_SIZE * 0.075,
-                Z_PLAYER_INDICATOR,
-            )),
-            ..default()
-        },
-        NpcDirectionIndicator { npc_entity },
-        GameEntity,
-    ));
+    agent::spawn_indicator(commands, npc_entity, world_pos, indicator_color);
 
     npc_entity
 }
@@ -160,6 +148,7 @@ pub(crate) fn try_wait_for_station_output(
 }
 
 pub(crate) fn try_collect_from_station(
+    config: &StationConfig,
     npc: &mut Npc,
     pos: &GridPos,
     facing: &mut Facing,
@@ -176,15 +165,16 @@ pub(crate) fn try_collect_from_station(
     }
     facing.0 = facing_dir;
     let front_pos = GridPos { x: pos.x + front_delta.0, y: pos.y + front_delta.1 };
+    let def = config.def(expected_kind);
     for (_, mut station, station_pos) in station_query.iter_mut() {
         if *station_pos == front_pos && station.kind == expected_kind {
             if station.has_output && carrying.0.is_none() {
-                let item_entity = spawn_item_entity(
+                let item_entity = crate::level::spawn_item_entity(
                     commands,
-                    station.output_kind,
+                    def.output_kind,
                     Vec3::new(transform.translation.x, transform.translation.y, 0.1),
                 );
-                carrying.0 = Some((item_entity, station.output_kind));
+                carrying.0 = Some((item_entity, def.output_kind));
                 station.has_output = false;
                 return true;
             }
@@ -193,28 +183,4 @@ pub(crate) fn try_collect_from_station(
     }
     npc.action_timer = npc.action_cooldown;
     false
-}
-
-pub fn update_npc_direction_indicator(
-    npc_query: Query<(Entity, &Transform, &Facing), (With<Npc>, Without<NpcDirectionIndicator>)>,
-    mut indicator_query: Query<(&NpcDirectionIndicator, &mut Transform, &mut Sprite)>,
-) {
-    for (npc_entity, npc_transform, facing) in npc_query.iter() {
-        for (indicator, mut transform, mut sprite) in indicator_query.iter_mut() {
-            if indicator.npc_entity != npc_entity {
-                continue;
-            }
-
-            let (offset_x, offset_y, width, height) = facing.0.indicator_offset(
-                INDICATOR_HALF,
-                INDICATOR_BAR_HALF,
-            );
-            transform.translation = Vec3::new(
-                npc_transform.translation.x + offset_x,
-                npc_transform.translation.y + offset_y,
-                Z_PLAYER_INDICATOR,
-            );
-            sprite.custom_size = Some(Vec2::new(width, height));
-        }
-    }
 }

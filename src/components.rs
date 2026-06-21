@@ -58,7 +58,7 @@ impl Carrying {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ItemKind {
     DoughBatch,
     RawCrustTray,
@@ -91,7 +91,7 @@ pub struct Item {
     pub kind: ItemKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum StationKind {
     Source,
     Former,
@@ -101,47 +101,17 @@ pub enum StationKind {
     Table,
 }
 
-impl StationKind {
-    pub fn colors(&self) -> (Color, Color, Color) {
-        match self {
-            StationKind::Source => (Color::srgb(0.2, 0.8, 0.2), Color::srgb(0.12, 0.48, 0.12), Color::srgb(0.4, 1.0, 0.4)),
-            StationKind::Former => (Color::srgb(0.8, 0.5, 0.2), Color::srgb(0.48, 0.30, 0.12), Color::srgb(1.0, 0.7, 0.4)),
-            StationKind::Oven => (Color::srgb(0.9, 0.3, 0.1), Color::srgb(0.54, 0.18, 0.06), Color::srgb(1.0, 0.5, 0.3)),
-            StationKind::Packer => (Color::srgb(0.3, 0.3, 0.8), Color::srgb(0.18, 0.18, 0.48), Color::srgb(0.5, 0.5, 1.0)),
-            StationKind::Palletizer => (Color::srgb(0.8, 0.2, 0.8), Color::srgb(0.48, 0.12, 0.48), Color::srgb(1.0, 0.4, 1.0)),
-            StationKind::Table => (Color::srgb(0.6, 0.4, 0.2), Color::srgb(0.6, 0.4, 0.2), Color::srgb(0.6, 0.4, 0.2)),
-        }
-    }
 
-    pub fn color_idle(&self) -> Color { self.colors().0 }
-    pub fn color_busy(&self) -> Color { self.colors().1 }
-    pub fn color_ready(&self) -> Color { self.colors().2 }
-
-    pub fn label(&self) -> String {
-        match self {
-            StationKind::Source => "Source",
-            StationKind::Former => "Former",
-            StationKind::Oven => "Oven",
-            StationKind::Packer => "Packer",
-            StationKind::Palletizer => "Pallet",
-            StationKind::Table => "Table",
-        }.to_string()
-    }
-}
 
 #[derive(Component)]
 pub struct Station {
     pub kind: StationKind,
-    pub accepted_kind: ItemKind,
     pub output_kind: ItemKind,
-    pub process_duration: f32,
     pub timer: f32,
     pub busy: bool,
     pub has_output: bool,
     pub packer_count: u32,
-    pub inputs_needed: u32,
     pub spawn_timer: f32,
-    pub spawn_interval: f32,
 }
 
 #[derive(Component)]
@@ -157,11 +127,8 @@ pub struct HudText;
 pub struct GridLine;
 
 #[derive(Component)]
-pub struct DirectionIndicator;
-
-#[derive(Component)]
-pub struct NpcDirectionIndicator {
-    pub npc_entity: Entity,
+pub struct DirectionIndicator {
+    pub parent: Entity,
 }
 
 #[derive(Component)]

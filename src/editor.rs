@@ -4,6 +4,7 @@ use crate::components::{Direction, GameEntity, GridPos, NpcKind, Player};
 use crate::level::{MAP_HEIGHT, MAP_WIDTH, TILE_SIZE, CONVEYOR, Z_EDITOR_CURSOR};
 use crate::mobile::{MobileInput, OVERLAY_WIDTH};
 use crate::resources::{EditorMode, LevelData, SelectedNpc, SelectedTile, UndoEntry, UndoStack};
+use crate::station_config::StationConfig;
 
 const PALETTE_WIDTH: f32 = 80.0;
 
@@ -583,6 +584,7 @@ pub fn editor_palette_keyboard(
 
 pub fn rebuild_level(
     mut rebuild: ResMut<RebuildRequested>,
+    station_config: Res<StationConfig>,
     mut commands: Commands,
     level_data: Res<LevelData>,
     game_entities: Query<Entity, With<GameEntity>>,
@@ -616,7 +618,7 @@ pub fn rebuild_level(
         commands.entity(entity).despawn();
     }
 
-    crate::level::setup_level(&mut commands, &level_data);
+    crate::level::setup_level(&mut commands, &level_data, &station_config);
     crate::player::spawn_player_at(&mut commands, safe_player_pos);
     for npc_data in &level_data.npcs {
         crate::npc::spawn_npc_from_data(&mut commands, npc_data);

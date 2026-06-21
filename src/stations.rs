@@ -3,9 +3,11 @@ use crate::audio::AudioEvent;
 use crate::components::*;
 use crate::level::{grid_to_world, TILE_SIZE, Z_ITEM_ON_CONVEYOR};
 use crate::resources::{ConveyorTimerResource, EditorMode};
+use crate::station_config::{StationBehavior, StationConfig};
 
 pub fn process_stations(
     editor: Res<EditorMode>,
+    config: Res<StationConfig>,
     time: Res<Time>,
     mut station_query: Query<&mut Station>,
     mut audio_queue: ResMut<crate::audio::AudioEventQueue>,
@@ -14,9 +16,11 @@ pub fn process_stations(
         return;
     }
     for mut station in station_query.iter_mut() {
-        if station.kind == StationKind::Source && !station.has_output {
+        let def = config.def(station.kind);
+
+        if def.behavior == StationBehavior::Source && !station.has_output {
             station.spawn_timer += time.delta_seconds();
-            if station.spawn_timer >= station.spawn_interval {
+            if station.spawn_timer >= def.spawn_interval {
                 station.has_output = true;
                 station.spawn_timer = 0.0;
             }
@@ -24,7 +28,7 @@ pub fn process_stations(
 
         if station.busy {
             station.timer += time.delta_seconds();
-            if station.timer >= station.process_duration {
+            if station.timer >= def.process_duration {
                 station.busy = false;
                 station.timer = 0.0;
                 station.has_output = true;
@@ -103,21 +107,23 @@ pub fn sync_ground_items(
 }
 
 pub fn update_station_labels(
+    config: Res<StationConfig>,
     station_query: Query<&Station>,
     mut label_query: Query<(&StationLabel, &mut Text)>,
 ) {
     for (label, mut text) in label_query.iter_mut() {
         if let Ok(station) = station_query.get(label.station_entity) {
+            let def = config.def(station.kind);
             if station.kind == StationKind::Packer && !station.busy {
                 text.sections[0].value = format!(
                     "Packer {}/{}",
                     station.packer_count,
-                    station.inputs_needed,
+                    def.inputs_needed,
                 );
             } else if station.kind == StationKind::Table && station.has_output {
                 text.sections[0].value = station.output_kind.label().to_string();
             } else {
-                text.sections[0].value = station.kind.label();
+                text.sections[0].value = def.label.clone();
             }
         }
     }
@@ -139,16 +145,18 @@ pub fn tick_floor_timers(
     }
 }
 pub fn update_station_visuals(
+    config: Res<StationConfig>,
     mut query: Query<(&Station, &mut Sprite)>,
 ) {
     for (station, mut sprite) in query.iter_mut() {
+        let def = config.def(station.kind);
         sprite.color = if station.has_output {
-            station.kind.color_ready()
+            def.col_ready()
         } else if station.busy {
-            let t = (station.timer / station.process_duration).clamp(0.0, 1.0);
-            station.kind.color_idle().mix(&station.kind.color_busy(), t)
+            let t = (station.timer / def.process_duration).clamp(0.0, 1.0);
+            def.col_idle().mix(&def.col_busy(), t)
         } else {
-            station.kind.color_idle()
+            def.col_idle()
         };
     }
 }

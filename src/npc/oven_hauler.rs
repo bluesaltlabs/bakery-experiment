@@ -4,9 +4,11 @@ use crate::components::{
     OvenHaulerTargets, Player, Solid, Station, StationKind, TableMarker,
 };
 use crate::resources::EditorMode;
+use crate::station_config::StationConfig;
 use super::movement;
 
 fn handle_inserting_to_packer(
+    config: &StationConfig,
     npc: &mut Npc,
     pos: &GridPos,
     facing: &mut Facing,
@@ -19,15 +21,16 @@ fn handle_inserting_to_packer(
     }
     facing.0 = Direction::Up;
     let front_pos = GridPos { x: pos.x, y: pos.y + 1 };
+    let def = config.def(StationKind::Packer);
     for (_, mut station, station_pos) in station_query.iter_mut() {
         if *station_pos == front_pos && station.kind == StationKind::Packer {
-            if carrying.0.as_ref().map(|(_, k)| *k) == Some(station.accepted_kind)
+            if carrying.0.as_ref().map(|(_, k)| *k) == Some(def.accepted_kind)
                 && !station.busy
                 && !station.has_output
             {
                 carrying.clear(commands);
                 station.packer_count += 1;
-                if station.packer_count >= 3 {
+                if station.packer_count >= def.inputs_needed {
                     station.busy = true;
                     station.timer = 0.0;
                     station.packer_count = 0;
@@ -43,6 +46,7 @@ fn handle_inserting_to_packer(
 
 pub fn oven_hauler_ai(
     editor: Res<EditorMode>,
+    config: Res<StationConfig>,
     time: Res<Time>,
     mut npc_query: Query<(
         &mut GridPos, &mut Facing, &mut Carrying, &mut Npc,
@@ -78,7 +82,7 @@ pub fn oven_hauler_ai(
             }
             OvenHaulerState::CollectingFromOven => {
                 if super::try_collect_from_station(
-                    &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
+                    &config, &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
                     &transform, &mut commands,
                     Direction::Left, (-1, 0), StationKind::Oven,
                 ) {
@@ -96,7 +100,7 @@ pub fn oven_hauler_ai(
                 )
             }
             OvenHaulerState::InsertingToPacker => handle_inserting_to_packer(
-                &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
+                &config, &mut npc, &pos, &mut facing, &mut carrying, &mut station_query, &mut commands,
             ),
             OvenHaulerState::ReturningToOvenWait => {
                 let target = targets.spawn;

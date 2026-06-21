@@ -4,6 +4,7 @@ use crate::components::{
     PackerHaulerState, PackerHaulerTargets, Player, Solid, Station, StationKind, TableMarker,
 };
 use crate::resources::{EditorMode, ShiftState};
+use crate::station_config::StationConfig;
 use super::movement;
 
 fn handle_inserting_to_palletizer(
@@ -36,6 +37,7 @@ fn handle_inserting_to_palletizer(
 
 pub fn packer_hauler_ai(
     editor: Res<EditorMode>,
+    config: Res<StationConfig>,
     time: Res<Time>,
     mut shift: ResMut<ShiftState>,
     mut npc_query: Query<(
@@ -73,7 +75,7 @@ pub fn packer_hauler_ai(
             }
             PackerHaulerState::CollectingFromPacker => {
                 if super::try_collect_from_station(
-                    &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
+                    &config, &mut npc, &pos, &mut facing, &mut carrying, &mut station_query,
                     &transform, &mut commands,
                     Direction::Right, (1, 0), StationKind::Packer,
                 ) {

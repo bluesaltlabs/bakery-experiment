@@ -1,5 +1,6 @@
 #![cfg_attr(target_arch = "wasm32", no_main)]
 
+mod agent;
 mod audio;
 mod components;
 mod editor;
@@ -11,6 +12,7 @@ mod movement;
 mod npc;
 mod player;
 mod resources;
+mod station_config;
 mod stations;
 mod ui;
 
@@ -21,6 +23,7 @@ use wasm_bindgen::prelude::*;
 use components::{GridPos, Player};
 use mobile::{MobileInput, MobileOverlayVisible};
 use resources::{ConveyorTimerResource, EditorMode, LevelData, SelectedNpc, SelectedTile, UndoStack};
+use station_config::StationConfig;
 
 fn make_window() -> Window {
     Window {
@@ -70,6 +73,7 @@ fn main() {
         .insert_resource(MobileInput::default())
         .insert_resource(MobileOverlayVisible(true))
         .insert_resource(LevelData::new())
+        .insert_resource(StationConfig::default())
         .insert_resource(EditorMode(false))
         .insert_resource(SelectedTile(1))
         .insert_resource(SelectedNpc::default())
@@ -95,14 +99,13 @@ fn main() {
                 npc::conveyor_loader::conveyor_loader_ai,
                 npc::oven_hauler::oven_hauler_ai,
                 npc::packer_hauler::packer_hauler_ai,
-                npc::update_npc_direction_indicator,
                 interaction::update_carried_items,
                 stations::process_stations,
                 stations::sync_ground_items,
                 stations::update_station_visuals,
                 stations::update_station_labels,
                 stations::tick_floor_timers,
-                player::update_direction_indicator,
+                agent::update_direction_indicators,
                 mobile::handle_overlay_toggle,
                 level::toggle_grid,
                 ui::update_game_state,
@@ -207,8 +210,8 @@ fn camera_follow(
     camera.translation.y += (target.y - camera.translation.y) * t;
 }
 
-fn setup_level_sys(mut commands: Commands, level_data: Res<LevelData>) {
-    level::setup_level(&mut commands, &level_data);
+fn setup_level_sys(mut commands: Commands, level_data: Res<LevelData>, station_config: Res<StationConfig>) {
+    level::setup_level(&mut commands, &level_data, &station_config);
 }
 
 fn spawn_player_sys(mut commands: Commands) {

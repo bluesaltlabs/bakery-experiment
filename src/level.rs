@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::components::*;
 use crate::mobile::MobileInput;
 use crate::resources::{GridVisible, LevelData};
+use crate::station_config::StationConfig;
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: usize = 30;
@@ -48,7 +49,7 @@ pub fn grid_to_world(pos: GridPos) -> Vec3 {
     )
 }
 
-pub fn setup_level(commands: &mut Commands, level_data: &LevelData) {
+pub fn setup_level(commands: &mut Commands, level_data: &LevelData, station_config: &StationConfig) {
     for (row, line) in level_data.tiles.iter().enumerate() {
         for (col, &tile) in line.iter().enumerate() {
             let y = (MAP_HEIGHT - 1 - row) as i32;
@@ -73,22 +74,22 @@ pub fn setup_level(commands: &mut Commands, level_data: &LevelData) {
                     ));
                 }
                 SOURCE => {
-                    spawn_station(commands, pos, StationKind::Source);
+                    spawn_station(commands, pos, StationKind::Source, station_config);
                 }
                 FORMER => {
-                    spawn_station(commands, pos, StationKind::Former);
+                    spawn_station(commands, pos, StationKind::Former, station_config);
                 }
                 OVEN => {
-                    spawn_station(commands, pos, StationKind::Oven);
+                    spawn_station(commands, pos, StationKind::Oven, station_config);
                 }
                 PACKER => {
-                    spawn_station(commands, pos, StationKind::Packer);
+                    spawn_station(commands, pos, StationKind::Packer, station_config);
                 }
                 PALLETIZER => {
-                    spawn_station(commands, pos, StationKind::Palletizer);
+                    spawn_station(commands, pos, StationKind::Palletizer, station_config);
                 }
                 TABLE => {
-                    spawn_station(commands, pos, StationKind::Table);
+                    spawn_station(commands, pos, StationKind::Table, station_config);
                 }
                 CONVEYOR => {
                     let dir = level_data.conveyor_dirs
@@ -119,27 +120,14 @@ pub fn setup_level(commands: &mut Commands, level_data: &LevelData) {
     spawn_gridlines(commands);
 }
 
-fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
-    let (accepted_kind, output_kind, process_duration, spawn_interval) = match kind {
-        StationKind::Source => (ItemKind::DoughBatch, ItemKind::DoughBatch, 0.0, 4.0),
-        StationKind::Former => (ItemKind::DoughBatch, ItemKind::RawCrustTray, 3.0, 0.0),
-        StationKind::Oven => (ItemKind::RawCrustTray, ItemKind::BakedCrustTray, 5.0, 0.0),
-        StationKind::Packer => (ItemKind::BakedCrustTray, ItemKind::Case, 2.0, 0.0),
-        StationKind::Palletizer => (ItemKind::Case, ItemKind::Case, 0.0, 0.0),
-        StationKind::Table => (ItemKind::DoughBatch, ItemKind::DoughBatch, 0.0, 0.0),
-    };
-
-    let inputs_needed = match kind {
-        StationKind::Packer => 3,
-        _ => 1,
-    };
-
+fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind, station_config: &StationConfig) {
+    let def = station_config.def(kind);
     let world_pos = grid_to_world(pos);
 
     let station_entity = commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                color: kind.color_idle(),
+                color: def.col_idle(),
                 custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),
                 ..default()
             },
@@ -149,16 +137,12 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
         pos,
         Station {
             kind,
-            accepted_kind,
-            output_kind,
-            process_duration,
+            output_kind: def.output_kind,
             timer: 0.0,
             busy: false,
             has_output: false,
             packer_count: 0,
-            inputs_needed,
             spawn_timer: 0.0,
-            spawn_interval,
         },
         GameEntity,
     )).id();
@@ -167,9 +151,8 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
         commands.entity(station_entity).insert(TableMarker);
     }
 
-    let label_prefix = kind.label();
     let label_suffix = if kind == StationKind::Packer {
-        format!(" 0/{}", inputs_needed)
+        format!(" 0/{}", def.inputs_needed)
     } else {
         String::new()
     };
@@ -177,7 +160,7 @@ fn spawn_station(commands: &mut Commands, pos: GridPos, kind: StationKind) {
     commands.spawn((
         Text2dBundle {
             text: Text::from_section(
-                format!("{}{}", label_prefix, label_suffix),
+                format!("{}{}", def.label, label_suffix),
                 TextStyle {
                     font_size: 12.0,
                     color: Color::WHITE,
